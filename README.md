@@ -50,13 +50,13 @@ cp .env.example .env.local
 ```
 
 ```env
-NEXT_PUBLIC_WHATSAPP_NUMBER=6281234567890
+NEXT_PUBLIC_WHATSAPP_NUMBER=6285713254800
 ADMIN_EMAIL=admin@mushida.id
 ADMIN_PASSWORD=changeme123
-NEXT_PUBLIC_SITE_URL=https://mushida.vercel.app
+NEXT_PUBLIC_SITE_URL=https://mushida-craft.vercel.app
 ```
 
-> **Catatan**: `NEXT_PUBLIC_WHATSAPP_NUMBER` harus format internasional tanpa `+` (contoh: `6281234567890`). Di production, env wajib di-set; jika tidak valid, helper akan log warning dan tombol order tetap bisa diklik tetapi mengarah ke nomor dummy.
+> **Catatan**: `NEXT_PUBLIC_WHATSAPP_NUMBER` harus format internasional tanpa `+` (contoh: `6285713254800`). Di production env ini **wajib valid** — jika kosong / format salah, build & runtime akan **throw error** dengan pesan jelas. Di development boleh dikosongkan; helper otomatis pakai nomor dummy supaya UI tetap bisa dicoba.
 
 ### 3. Jalankan development server
 
@@ -168,11 +168,38 @@ Di `src/lib/whatsapp.ts`:
 - `isValidWhatsAppNumber(input)` / `normalizeWhatsAppNumber(input)` — validator + helper format.
 
 Nomor tujuan di-resolve `getWhatsAppNumber()`:
-1. Pakai `NEXT_PUBLIC_WHATSAPP_NUMBER` jika valid.
-2. Di production, log warning ke console kalau env tidak ada/invalid.
-3. Di dev, fallback ke nomor dummy supaya UI tetap bisa dicoba.
+1. Pakai `NEXT_PUBLIC_WHATSAPP_NUMBER` kalau valid.
+2. Di **production**, env wajib di-set & valid. Bila tidak: helper **throw `Error`** dengan pesan jelas (gagal saat build/runtime, tidak silent-fallback).
+3. Di **development**, fallback ke nomor dummy supaya UI tetap bisa dicoba.
+
+Validator: `isValidWhatsAppNumber(input)` cek format `^[1-9]\d{7,14}$` setelah `normalizeWhatsAppNumber()` (strip `+`, spasi, tanda hubung; konversi prefix `0` → `62`).
 
 ---
+
+## 🛡️ Production Readiness Notes
+
+Sebelum mendeploy ke pelanggan, perhatikan hal-hal berikut:
+
+- **Demo Local Admin**: dashboard `/admin/dashboard` saat ini **bukan admin production**. Login hanya cek pasangan `ADMIN_EMAIL`/`ADMIN_PASSWORD` dari env, dan data produk disimpan di `localStorage` browser admin yang sedang login.
+- **Data tidak tersinkronisasi**: perubahan produk hanya terlihat di browser yang melakukan perubahan. Tidak ada API server / database, jadi user lain (bahkan admin lain) **tidak akan melihat update** sampai database diaktifkan.
+- **Untuk production yang sungguhan**, pasang:
+  1. **Database**: implementasikan `supabaseProductRepository` (atau Firestore) — stub tersedia di `src/lib/repositories/`. Aktifkan via factory `chooseProductRepository()` setelah env-nya tersedia.
+  2. **Auth provider proper**: NextAuth, Clerk, Supabase Auth, atau Firebase Auth. Hapus path `localStorage` di `src/lib/auth.ts`.
+  3. **Image storage final**: ganti `next.config.mjs` `images.remotePatterns` dari Unsplash ke hostname storage yang dipakai (Supabase Storage / Cloudinary / S3 / Firebase Storage).
+  4. **WhatsApp env wajib valid** di production — `getWhatsAppNumber()` akan throw `Error` saat build/runtime kalau env kosong/format salah.
+
+## 🔒 Security Headers
+
+`next.config.mjs` memasang baseline headers untuk semua route:
+
+| Header                  | Nilai                                            |
+| ----------------------- | ------------------------------------------------ |
+| X-Frame-Options         | `DENY` (cegah clickjacking)                      |
+| X-Content-Type-Options  | `nosniff`                                        |
+| Referrer-Policy         | `strict-origin-when-cross-origin`                |
+| Permissions-Policy      | `camera=(), microphone=(), geolocation=()`       |
+
+Longgarkan kalau perlu fitur tertentu, jangan pukul rata.
 
 ## 🧪 CI
 

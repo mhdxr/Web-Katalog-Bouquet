@@ -38,8 +38,8 @@ jobs:
         env:
           # Default placeholder values supaya build bisa jalan tanpa secrets.
           # Override via repo Secrets/Variables jika perlu.
-          NEXT_PUBLIC_WHATSAPP_NUMBER: "6281234567890"
-          NEXT_PUBLIC_SITE_URL: "https://mushida.vercel.app"
+          NEXT_PUBLIC_WHATSAPP_NUMBER: "6285713254800"
+          NEXT_PUBLIC_SITE_URL: "https://mushida-craft.vercel.app"
           ADMIN_EMAIL: "admin@mushida.id"
           ADMIN_PASSWORD: "changeme123"
         run: npm run build

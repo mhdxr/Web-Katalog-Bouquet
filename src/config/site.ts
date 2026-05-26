@@ -4,8 +4,8 @@
  * value dari sini supaya konsisten dan mudah diubah.
  */
 
-const FALLBACK_WA_NUMBER = "6281234567890";
-const FALLBACK_SITE_URL = "https://mushida.vercel.app";
+const FALLBACK_WA_NUMBER = "6285713254800";
+const FALLBACK_SITE_URL = "https://mushida-craft.vercel.app";
 
 export interface SiteConfig {
   /** Slug / identifier brand (lowercase). */

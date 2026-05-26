@@ -4,7 +4,7 @@ import { siteConfig } from "@/config/site";
 
 /**
  * Format yang valid: angka 8-15 digit, optional prefix "+" / "00" sudah dihapus.
- * Contoh valid: "6281234567890".
+ * Contoh valid: "6285713254800".
  */
 const WA_NUMBER_REGEX = /^[1-9]\d{7,14}$/;
 
@@ -29,11 +29,23 @@ export function isValidWhatsAppNumber(input: string): boolean {
 }
 
 /**
+ * Pesan error standar saat env WA tidak valid di production.
+ * Diekspos sebagai konstanta supaya gampang ditest.
+ */
+export const WHATSAPP_ENV_ERROR =
+  "[whatsapp] NEXT_PUBLIC_WHATSAPP_NUMBER tidak diset atau formatnya tidak valid. " +
+  "Set env yang benar (format internasional tanpa +, contoh: 6285713254800) " +
+  "sebelum build / deploy ke production.";
+
+/**
  * Ambil nomor WhatsApp tujuan order.
- * - Di production (NODE_ENV === "production"), env wajib di-set & valid.
- *   Kalau tidak: log warning dan tetap kembalikan nomor (tapi user akan tahu
- *   karena pesan errornya jelas saat tombol diklik atau via console).
- * - Di development, fallback ke nomor dummy aman supaya UI tetap bisa dicoba.
+ *
+ * Aturan:
+ * - **Production** (`NODE_ENV === "production"`): env wajib di-set & valid.
+ *   Kalau tidak: throw `Error` dengan pesan jelas. Build/runtime akan gagal
+ *   alih-alih silent-fallback ke nomor dummy.
+ * - **Development / test**: kalau env tidak ada/invalid, fallback ke nomor
+ *   dummy dari `siteConfig.whatsappNumber` supaya UI tetap bisa dicoba.
  */
 export function getWhatsAppNumber(): string {
   const fromEnv = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER?.trim();
@@ -42,11 +54,7 @@ export function getWhatsAppNumber(): string {
   }
 
   if (process.env.NODE_ENV === "production") {
-    // eslint-disable-next-line no-console
-    console.warn(
-      "[whatsapp] NEXT_PUBLIC_WHATSAPP_NUMBER tidak diset atau formatnya tidak valid. " +
-        "Set env yang benar (format: 62xxxxxxxxxxx) sebelum deploy ke production.",
-    );
+    throw new Error(WHATSAPP_ENV_ERROR);
   }
 
   return normalizeWhatsAppNumber(siteConfig.whatsappNumber);
