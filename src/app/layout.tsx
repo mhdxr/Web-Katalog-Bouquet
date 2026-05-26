@@ -50,6 +50,12 @@ export const viewport: Viewport = {
   maximumScale: 5,
 };
 
+// `sameAs` mengikat brand ke profile sosial media (good for SEO/Knowledge
+// Graph). Filter URL kosong supaya kita tidak kirim entry invalid.
+const socialSameAs = siteConfig.socialLinks
+  .map((s) => s.url)
+  .filter((u): u is string => Boolean(u && u.length > 0));
+
 const jsonLd = {
   "@context": "https://schema.org",
   "@type": "Store",
@@ -61,6 +67,7 @@ const jsonLd = {
   priceRange: siteConfig.priceRange,
   currenciesAccepted: siteConfig.currency,
   paymentAccepted: "Cash, Bank Transfer, E-Wallet",
+  ...(socialSameAs.length > 0 ? { sameAs: socialSameAs } : {}),
 };
 
 export default function RootLayout({

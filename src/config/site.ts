@@ -6,6 +6,20 @@
 
 const FALLBACK_WA_NUMBER = "6285713254800";
 const FALLBACK_SITE_URL = "https://mushida-craft.vercel.app";
+const FALLBACK_INSTAGRAM_URL = "https://instagram.com/mushida.id";
+const FALLBACK_FACEBOOK_URL = "https://facebook.com/mushida.id";
+
+export type SocialPlatform = "instagram" | "facebook";
+
+export interface SocialLink {
+  platform: SocialPlatform;
+  /** Label untuk aria-label & tooltip. */
+  label: string;
+  /** Handle / nama display tanpa "@" / URL. */
+  handle: string;
+  /** URL absolut. Kosong = tidak ditampilkan. */
+  url: string;
+}
 
 export interface SiteConfig {
   /** Slug / identifier brand (lowercase). */
@@ -32,6 +46,18 @@ export interface SiteConfig {
   contactEmail: string;
   /** Handle Instagram (tanpa "@"). */
   instagramHandle: string;
+  /** URL profil Instagram (absolute). */
+  instagramUrl: string;
+  /** Nama page Facebook (display). */
+  facebookPageName: string;
+  /** URL page Facebook (absolute). */
+  facebookUrl: string;
+  /**
+   * Daftar sosial media yang aktif. Komponen UI cukup map array ini
+   * untuk render link/icon — JANGAN hardcode URL di komponen lain.
+   * Entri dengan `url` kosong di-filter otomatis.
+   */
+  socialLinks: SocialLink[];
   /** Email default placeholder utk form login admin. */
   adminEmailPlaceholder: string;
   /** Keywords SEO. */
@@ -48,6 +74,42 @@ const rawSiteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
 const siteUrl =
   rawSiteUrl && rawSiteUrl.length > 0 ? rawSiteUrl : FALLBACK_SITE_URL;
 
+const rawInstagramUrl = process.env.NEXT_PUBLIC_INSTAGRAM_URL?.trim();
+const instagramUrl =
+  rawInstagramUrl && rawInstagramUrl.length > 0
+    ? rawInstagramUrl
+    : FALLBACK_INSTAGRAM_URL;
+
+const rawFacebookUrl = process.env.NEXT_PUBLIC_FACEBOOK_URL?.trim();
+const facebookUrl =
+  rawFacebookUrl && rawFacebookUrl.length > 0
+    ? rawFacebookUrl
+    : FALLBACK_FACEBOOK_URL;
+
+const instagramHandle = "mushida.id";
+const facebookPageName = "Mushida";
+
+/**
+ * Single source of truth untuk daftar sosial media yang aktif.
+ * URL kosong otomatis di-filter — komponen UI tidak perlu cek manual.
+ */
+const socialLinks: SocialLink[] = (
+  [
+    {
+      platform: "instagram",
+      label: "Instagram Mushida",
+      handle: instagramHandle,
+      url: instagramUrl,
+    },
+    {
+      platform: "facebook",
+      label: "Facebook Mushida",
+      handle: facebookPageName,
+      url: facebookUrl,
+    },
+  ] as SocialLink[]
+).filter((s) => s.url.length > 0);
+
 export const siteConfig: SiteConfig = {
   name: "mushida",
   displayName: "Mushida",
@@ -63,7 +125,11 @@ export const siteConfig: SiteConfig = {
   priceRange: "Rp200.000 - Rp2.000.000",
   currency: "IDR",
   contactEmail: "hello@mushida.me",
-  instagramHandle: "mushida.me",
+  instagramHandle,
+  instagramUrl,
+  facebookPageName,
+  facebookUrl,
+  socialLinks,
   adminEmailPlaceholder: "admin@mushida.me",
   keywords: [
     "bouquet bunga",

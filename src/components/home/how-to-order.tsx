@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { MessageCircle, Search, ShoppingBag, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SectionHeading } from "@/components/common/section-heading";
+import { SocialLinks } from "@/components/common/social-links";
 
 const steps = [
   {
@@ -70,6 +71,15 @@ export function HowToOrder() {
           <Button asChild variant="accent" size="lg">
             <Link href="/custom-order">Buat Custom Bouquet</Link>
           </Button>
+        </div>
+
+        <div className="mt-10 flex flex-col items-center gap-4 rounded-2xl border border-border/60 bg-white/60 p-6 text-center">
+          <p className="max-w-xl text-sm text-muted-foreground">
+            Ikuti <strong className="text-foreground">Mushida</strong> di
+            Instagram dan Facebook untuk katalog terbaru, promo, dan inspirasi
+            bouquet.
+          </p>
+          <SocialLinks variant="icon" />
         </div>
       </div>
     </section>

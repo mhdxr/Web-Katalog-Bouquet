@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Flower2, Instagram, MessageCircle, Mail } from "lucide-react";
+import { Flower2, MessageCircle, Mail } from "lucide-react";
+import { SocialLinks } from "@/components/common/social-links";
 import { siteConfig } from "@/config/site";
 
 function formatWhatsAppDisplay(num: string): string {
@@ -30,6 +31,7 @@ export function Footer() {
               Hand-tied bouquet artisan untuk setiap momen berharga.
               Premium, elegan, dengan sentuhan personal.
             </p>
+            <SocialLinks variant="icon" />
           </div>
 
           <div>
@@ -104,14 +106,11 @@ export function Footer() {
                 <span>WhatsApp {waDisplay}</span>
               </li>
               <li className="flex items-center gap-2">
-                <Instagram className="h-4 w-4 text-primary" />
-                <span>@{siteConfig.instagramHandle}</span>
-              </li>
-              <li className="flex items-center gap-2">
                 <Mail className="h-4 w-4 text-primary" />
                 <span>{siteConfig.contactEmail}</span>
               </li>
             </ul>
+            <SocialLinks variant="inline" className="mt-3" />
           </div>
         </div>
 

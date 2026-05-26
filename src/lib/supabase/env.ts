@@ -14,8 +14,8 @@ export interface SupabasePublicEnv {
 
 /** Validasi & ambil env Supabase publik (URL + anon/publishable key). */
 export function getSupabasePublicEnv(): SupabasePublicEnv {
-  const url = process.env[URL_KEY]?.trim();
-  const anonKey = process.env[ANON_KEY]?.trim();
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim();
 
   if (!url || !anonKey) {
     throw new Error(
@@ -29,5 +29,8 @@ export function getSupabasePublicEnv(): SupabasePublicEnv {
 
 /** Cek tersedia tanpa throw — bermanfaat untuk feature flag / fallback. */
 export function hasSupabaseEnv(): boolean {
-  return Boolean(process.env[URL_KEY] && process.env[ANON_KEY]);
+  return Boolean(
+    process.env.NEXT_PUBLIC_SUPABASE_URL &&
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+  );
 }

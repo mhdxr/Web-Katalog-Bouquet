@@ -62,6 +62,10 @@ ADMIN_EMAIL=admin@mushida.me
 # Supabase (WAJIB untuk admin & data produk live).
 NEXT_PUBLIC_SUPABASE_URL=https://xxxxxxxxxxxxxxxxxxxx.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=eyJhbGciOi...   # anon/publishable key, bukan service role
+
+# Sosial media (opsional, kosongkan untuk pakai default mushida.id).
+NEXT_PUBLIC_INSTAGRAM_URL=https://instagram.com/mushida.id
+NEXT_PUBLIC_FACEBOOK_URL=https://facebook.com/mushida.id
 ```
 
 > **Catatan**:
@@ -244,6 +248,21 @@ Server Components & sitemap memakai `src/lib/server/products.ts` yang berbasis *
 | `products_admin_insert/update/delete` | authenticated  | CRUD penuh, hanya jika `is_admin()` = true            |
 
 `is_admin()` adalah `SECURITY DEFINER` function yang mengecek keberadaan `auth.uid()` di tabel `admin_users`.
+
+---
+
+## 📣 Sosial Media
+
+Profil sosial media Mushida ditampilkan di footer (icon row + inline list di kolom Kontak) dan di section **Cara Order** sebagai CTA. Semuanya membaca dari `siteConfig.socialLinks` di `src/config/site.ts` — jangan hardcode URL Instagram/Facebook di komponen lain.
+
+| Platform  | Default URL                              | Override env                    |
+| --------- | ---------------------------------------- | ------------------------------- |
+| Instagram | `https://instagram.com/mushida.id`       | `NEXT_PUBLIC_INSTAGRAM_URL`     |
+| Facebook  | `https://facebook.com/mushida.id`        | `NEXT_PUBLIC_FACEBOOK_URL`      |
+
+Komponen reusable: `<SocialLinks variant="icon" />` (default — bulat icon-only) dan `<SocialLinks variant="inline" />` (icon + handle text). URL kosong otomatis di-filter di config sehingga tidak perlu cek manual di komponen.
+
+JSON-LD `Store` di `src/app/layout.tsx` ikut menambahkan `sameAs: [instagramUrl, facebookUrl]` (filtered) supaya search engine bisa kaitkan brand ke profile sosialnya.
 
 ---
 
