@@ -71,7 +71,7 @@ NEXT_PUBLIC_FACEBOOK_URL=https://facebook.com/mushida.id
 > **Catatan**:
 > - `NEXT_PUBLIC_WHATSAPP_NUMBER` harus format internasional tanpa `+` (contoh: `6285713254800`). Di production env ini **wajib valid** — jika kosong / format salah, helper akan **throw error**. Di development boleh dikosongkan; otomatis pakai nomor dummy.
 > - `NEXT_PUBLIC_SUPABASE_*` ambil dari Supabase Dashboard → **Settings → API**. Pakai **anon/publishable key**, bukan service role. Service role tidak boleh di-set di env `NEXT_PUBLIC_*` karena akan ter-expose ke browser.
-> - Setup tabel + RLS: jalankan `supabase/schema.sql` lalu `supabase/seed.sql` di Supabase SQL Editor (lihat bagian [Setup Supabase](#-setup-supabase)).
+> - Setup tabel + RLS + bucket storage + seed produk: cukup jalankan **satu file** `supabase/setup.sql` di Supabase SQL Editor (lihat bagian [Setup Supabase](#-setup-supabase)).
 
 ### 3. Jalankan development server
 
@@ -135,8 +135,9 @@ public/
 └── images/
     └── placeholder-bouquet.svg   # ⭐ Fallback image saat URL kosong
 supabase/
-├── schema.sql                 # ⭐ Tabel + RLS + trigger updated_at
-└── seed.sql                   # ⭐ 12 produk awal
+└── setup.sql                  # ⭐ Single-file setup (idempotent): tabel,
+                               #    trigger, RLS, bucket storage, seed 12 produk,
+                               #    + template insert admin pertama.
 ```
 
 ---
@@ -232,13 +233,30 @@ Server Components & sitemap memakai `src/lib/server/products.ts` yang berbasis *
 
 ## 🗄️ Setup Supabase
 
-1. Buat project baru di [supabase.com](https://supabase.com).
-2. Buka **SQL Editor** lalu jalankan:
-   - `supabase/schema.sql` — bikin tabel `admin_users` + `products`, trigger `updated_at`, **semua RLS policy** (database + storage).
-   - `supabase/seed.sql` — masukkan 12 produk awal (idempoten, aman dijalankan ulang).
-3. Buat bucket Storage `product-images` (lihat [Setup Supabase Storage](#-setup-supabase-storage)).
-4. Buat user admin pertama (lihat bagian [Production Admin Dashboard](#-production-admin-dashboard)).
-5. Salin URL + anon key ke `.env.local` / Vercel.
+Seluruh setup backend digabung jadi **satu file idempotent & non-destructive**: `supabase/setup.sql`.
+
+**Aman dijalankan berkali-kali di database yang sudah ada datanya.** File ini tidak akan:
+
+- ❌ `drop table` — tabel `products` & `admin_users` tidak akan disentuh strukturnya.
+- ❌ `truncate` / `delete` — data produk dan baris admin yang sudah ada **tidak hilang**.
+- ❌ Reset/menimpa row produk yang sudah pernah diedit admin — seed pakai `on conflict (slug) do nothing`, jadi produk lama dengan slug yang sama akan dilewati.
+- ❌ Menggandakan bucket storage — pakai `insert into storage.buckets ... on conflict (id) do update`, jadi cuma update settings.
+
+Yang dilakukan ulang setiap kali file ini di-run cuma hal-hal **ringan & tanpa risiko data**: refresh definisi function (`create or replace`), refresh RLS policy (`drop policy if exists` lalu `create policy` ulang), refresh trigger (`drop trigger if exists` lalu `create trigger` ulang), dan backfill kolom yang missing (`alter table add column if not exists`).
+
+1. Buat project baru di [supabase.com](https://supabase.com) — atau pakai project existing.
+2. Buka **SQL Editor** → **New query** → copy-paste seluruh isi `supabase/setup.sql` → **Run**.
+   File tersebut akan menyiapkan semuanya sekaligus:
+   - Tabel `products` + `admin_users` (create kalau belum ada, backfill kolom kalau sudah ada).
+   - Trigger `updated_at` di `products`.
+   - Function `public.is_admin()` (`SECURITY DEFINER`).
+   - Seluruh RLS policy untuk `products` dan `admin_users` (di-refresh).
+   - Bucket Storage `product-images` (create kalau belum ada, sync settings kalau sudah ada) + RLS `storage.objects`.
+   - Seed 12 produk awal — **hanya untuk slug yang belum ada**, produk yang sudah pernah diedit admin tidak ter-revert.
+3. Buat user admin pertama (lihat bagian [Production Admin Dashboard](#-production-admin-dashboard)). Section 10 di `setup.sql` berisi template `insert into public.admin_users ...` yang tinggal di-uncomment + diisi UUID-nya. Akun admin **selalu dibuat manual** lewat Supabase Dashboard (Authentication → Users) — tidak pernah lewat SQL.
+4. Salin URL + anon key dari **Settings → API** ke `.env.local` / Vercel.
+
+> **Catatan keamanan**: file ini sengaja **tidak** membuat auth user lewat SQL dan **tidak** memakai service role key. Aplikasi runtime tetap pakai anon/publishable key + cookie sesi — semua otorisasi di-enforce oleh RLS.
 
 **RLS yang aktif di `products`:**
 
@@ -256,61 +274,28 @@ Server Components & sitemap memakai `src/lib/server/products.ts` yang berbasis *
 
 Gambar produk di-upload langsung dari admin dashboard ke **Supabase Storage** (bucket `product-images`). Public read terbuka untuk semua orang; INSERT/UPDATE/DELETE dibatasi ke admin (cek `public.is_admin()`).
 
-### 1. Bikin bucket
+### 1. Bucket + policy storage
 
-Supabase Dashboard → **Storage** → **New bucket**:
+Bucket dan seluruh RLS `storage.objects` sudah dibuat otomatis oleh `supabase/setup.sql` (section 7 dan 8). Kamu **tidak perlu** klik manual di Dashboard. Settings yang ter-apply:
 
 | Field                     | Nilai                                                |
 | ------------------------- | ---------------------------------------------------- |
 | **Name**                  | `product-images`                                     |
 | **Public bucket**         | ✅ ON (supaya `getPublicUrl()` bisa diakses publik) |
-| **File size limit**       | `3 MB` (opsional — server juga memvalidasi)          |
-| **Allowed MIME types**    | `image/jpeg, image/png, image/webp` (opsional)       |
+| **File size limit**       | 3 MB (server juga memvalidasi)                       |
+| **Allowed MIME types**    | `image/jpeg`, `image/png`, `image/webp`              |
 
-> **Kenapa public bucket?** Halaman katalog publik perlu menampilkan gambar tanpa auth. RLS object-level di bawah yang mengunci tulisan ke admin saja, jadi public bucket tidak berarti siapa pun bisa upload.
+> **Kenapa public bucket?** Halaman katalog publik perlu menampilkan gambar tanpa auth. RLS object-level mengunci tulisan ke admin saja (cek `public.is_admin()`), jadi public bucket **tidak** berarti siapa pun bisa upload.
 
-### 2. Apply policy storage
+Kalau kamu sudah pernah membuat bucket-nya manual sebelum ini, jalankan ulang `setup.sql` aman — `insert into storage.buckets ... on conflict (id) do update` akan menyinkronkan settings tanpa menggandakan bucket atau menghilangkan object yang sudah ada.
 
-Policy SQL sudah ada di `supabase/schema.sql` bagian `7. STORAGE`. Kalau kamu menjalankan ulang `schema.sql`, policy ikut ter-apply. Kalau hanya ingin policy storage saja, copy-paste blok di bawah ke **SQL Editor**:
-
-```sql
--- Public read
-drop policy if exists "product_images_public_read" on storage.objects;
-create policy "product_images_public_read"
-on storage.objects for select
-to anon, authenticated
-using (bucket_id = 'product-images');
-
--- Admin INSERT
-drop policy if exists "product_images_admin_insert" on storage.objects;
-create policy "product_images_admin_insert"
-on storage.objects for insert
-to authenticated
-with check (bucket_id = 'product-images' and public.is_admin());
-
--- Admin UPDATE
-drop policy if exists "product_images_admin_update" on storage.objects;
-create policy "product_images_admin_update"
-on storage.objects for update
-to authenticated
-using (bucket_id = 'product-images' and public.is_admin())
-with check (bucket_id = 'product-images' and public.is_admin());
-
--- Admin DELETE
-drop policy if exists "product_images_admin_delete" on storage.objects;
-create policy "product_images_admin_delete"
-on storage.objects for delete
-to authenticated
-using (bucket_id = 'product-images' and public.is_admin());
-```
-
-### 3. Whitelist hostname di Next.js
+### 2. Whitelist hostname di Next.js
 
 Setelah bucket aktif, `next.config.mjs` otomatis menambahkan hostname Supabase Storage ke `images.remotePatterns` berdasarkan `NEXT_PUBLIC_SUPABASE_URL`. Pathname dibatasi ke `/storage/v1/object/public/product-images/**` — tidak ada wildcard global yang bisa menyalahgunakan optimizer Next/Image.
 
 Pastikan env `NEXT_PUBLIC_SUPABASE_URL` sudah di-set saat build, supaya pattern-nya ter-include.
 
-### 4. Aturan upload
+### 3. Aturan upload
 
 | Aturan                  | Nilai                                                                                          |
 | ----------------------- | ---------------------------------------------------------------------------------------------- |
