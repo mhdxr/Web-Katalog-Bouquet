@@ -5,6 +5,7 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { siteConfig } from "@/config/site";
 
 export function Hero() {
   return (
@@ -26,9 +27,9 @@ export function Hero() {
             momen tak terlupakan.
           </h1>
           <p className="max-w-lg text-base text-muted-foreground md:text-lg">
-            Dari hand-bouquet klasik hingga rangkaian wedding mewah —
-            Bloomera menghadirkan bunga premium dengan sentuhan personal
-            untuk setiap kisah Anda.
+            Dari hand-bouquet klasik hingga rangkaian wedding mewah —{" "}
+            {siteConfig.displayName} menghadirkan bunga premium dengan
+            sentuhan personal untuk setiap kisah Anda.
           </p>
           <div className="flex flex-wrap items-center gap-3 pt-2">
             <Button asChild size="lg">

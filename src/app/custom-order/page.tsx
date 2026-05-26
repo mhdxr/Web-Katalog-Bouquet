@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import { Sparkles, Clock, Heart } from "lucide-react";
 import { CustomOrderForm } from "@/components/custom-order/custom-order-form";
+import { siteConfig } from "@/config/site";
 
 export const metadata: Metadata = {
   title: "Custom Order Bouquet",
-  description:
-    "Request bouquet custom sesuai kebutuhanmu — pilih jenis, budget, dan tanggal. Submit langsung terhubung ke WhatsApp Bloomera.",
+  description: `Request bouquet custom sesuai kebutuhanmu — pilih jenis, budget, dan tanggal. Submit langsung terhubung ke WhatsApp ${siteConfig.displayName}.`,
 };
 
 const perks = [

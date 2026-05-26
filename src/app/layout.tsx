@@ -4,6 +4,7 @@ import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { WhatsAppFab } from "@/components/common/whatsapp-fab";
 import { Toaster } from "@/components/common/toaster";
+import { siteConfig, siteTitle } from "@/config/site";
 import "./globals.css";
 
 const inter = Inter({
@@ -18,42 +19,24 @@ const playfair = Playfair_Display({
   display: "swap",
 });
 
-const siteUrl =
-  process.env.NEXT_PUBLIC_SITE_URL || "https://bloomera.vercel.app";
-
 export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl),
-  title: {
-    default: "Bloomera — Hand-tied Bouquet Artisan",
-    template: "%s | Bloomera",
-  },
-  description:
-    "Katalog bouquet bunga premium untuk wedding, graduation, anniversary, dan momen spesial lainnya. Order mudah via WhatsApp.",
-  keywords: [
-    "bouquet bunga",
-    "toko bunga online",
-    "hand bouquet",
-    "wedding bouquet",
-    "graduation bouquet",
-    "money bouquet",
-    "dried flower",
-    "Bloomera",
-  ],
-  authors: [{ name: "Bloomera" }],
+  metadataBase: new URL(siteConfig.url),
+  title: siteTitle,
+  description: siteConfig.description,
+  keywords: siteConfig.keywords,
+  authors: [{ name: siteConfig.author }],
   openGraph: {
     type: "website",
-    locale: "id_ID",
-    url: siteUrl,
-    siteName: "Bloomera",
-    title: "Bloomera — Hand-tied Bouquet Artisan",
-    description:
-      "Katalog bouquet bunga premium untuk setiap momen spesialmu.",
+    locale: siteConfig.locale,
+    url: siteConfig.url,
+    siteName: siteConfig.displayName,
+    title: siteTitle.default,
+    description: siteConfig.shortDescription,
   },
   twitter: {
     card: "summary_large_image",
-    title: "Bloomera — Hand-tied Bouquet Artisan",
-    description:
-      "Katalog bouquet bunga premium untuk setiap momen spesialmu.",
+    title: siteTitle.default,
+    description: siteConfig.shortDescription,
   },
   robots: { index: true, follow: true },
   alternates: { canonical: "/" },
@@ -61,7 +44,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#fff8f5",
+  themeColor: siteConfig.themeColor,
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
@@ -70,13 +53,13 @@ export const viewport: Viewport = {
 const jsonLd = {
   "@context": "https://schema.org",
   "@type": "Store",
-  name: "Bloomera",
+  name: siteConfig.displayName,
   description:
     "Toko bouquet bunga premium dengan layanan order via WhatsApp dan custom request.",
-  url: siteUrl,
-  image: `${siteUrl}/og-image.jpg`,
-  priceRange: "Rp200.000 - Rp2.000.000",
-  currenciesAccepted: "IDR",
+  url: siteConfig.url,
+  image: `${siteConfig.url}${siteConfig.ogImagePath}`,
+  priceRange: siteConfig.priceRange,
+  currenciesAccepted: siteConfig.currency,
   paymentAccepted: "Cash, Bank Transfer, E-Wallet",
 };
 

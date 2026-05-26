@@ -1,9 +1,9 @@
 import type { MetadataRoute } from "next";
 import { products } from "@/data/products";
 import { categories } from "@/data/categories";
+import { siteConfig } from "@/config/site";
 
-const siteUrl =
-  process.env.NEXT_PUBLIC_SITE_URL || "https://bloomera.vercel.app";
+const siteUrl = siteConfig.url;
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();

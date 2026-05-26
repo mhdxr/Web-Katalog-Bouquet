@@ -4,6 +4,8 @@ import Image from "next/image";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 
+const PLACEHOLDER = "/images/placeholder-bouquet.svg";
+
 interface ProductGalleryProps {
   images: string[];
   alt: string;
@@ -11,7 +13,11 @@ interface ProductGalleryProps {
 
 export function ProductGallery({ images, alt }: ProductGalleryProps) {
   const [active, setActive] = useState(0);
-  const list = images.length > 0 ? images : ["/placeholder.png"];
+  const safeImages =
+    Array.isArray(images) && images.length > 0
+      ? images.filter((src) => typeof src === "string" && src.trim().length > 0)
+      : [];
+  const list = safeImages.length > 0 ? safeImages : [PLACEHOLDER];
 
   return (
     <div className="space-y-3">

@@ -43,8 +43,13 @@ export const productSchema = z.object({
     "dried-flower",
   ]),
   images: z.string().min(5, "Masukkan minimal 1 URL gambar"),
-  badge: z.enum(["best-seller", "new", "sold-out", ""]).optional(),
+  // "none" adalah sentinel untuk "tanpa badge" karena Radix Select tidak
+  // mengizinkan SelectItem dengan value="" (kosong).
+  badge: z.enum(["none", "best-seller", "new", "sold-out"]).default("none"),
   isAvailable: z.boolean(),
 });
 
 export type ProductSchema = z.infer<typeof productSchema>;
+
+/** Sentinel value untuk Radix Select "tanpa badge". */
+export const BADGE_NONE = "none" as const;

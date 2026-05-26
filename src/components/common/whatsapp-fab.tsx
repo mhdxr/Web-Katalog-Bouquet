@@ -3,9 +3,9 @@
 import { motion } from "framer-motion";
 import { MessageCircle } from "lucide-react";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
+import { siteConfig } from "@/config/site";
 
-const defaultMessage =
-  "Halo Bloomera! 🌸 Saya ingin tanya-tanya tentang bouquet bunga.";
+const defaultMessage = `Halo ${siteConfig.displayName}! 🌸 Saya ingin tanya-tanya tentang bouquet bunga.`;
 
 export function WhatsAppFab() {
   const url = buildWhatsAppUrl(defaultMessage);
@@ -15,7 +15,7 @@ export function WhatsAppFab() {
       href={url}
       target="_blank"
       rel="noopener noreferrer"
-      aria-label="Chat WhatsApp Bloomera"
+      aria-label={`Chat WhatsApp ${siteConfig.displayName}`}
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.6, duration: 0.4 }}

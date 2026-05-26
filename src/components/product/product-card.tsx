@@ -8,6 +8,8 @@ import { categoryMap } from "@/data/categories";
 import { formatCurrency } from "@/lib/utils";
 import type { Product, ProductBadge } from "@/types";
 
+const PLACEHOLDER = "/images/placeholder-bouquet.svg";
+
 const badgeMap: Record<
   ProductBadge,
   { label: string; variant: "default" | "accent" | "muted" }
@@ -25,6 +27,10 @@ interface ProductCardProps {
 export function ProductCard({ product, index = 0 }: ProductCardProps) {
   const cat = categoryMap[product.category];
   const isSoldOut = product.badge === "sold-out" || !product.isAvailable;
+  const cover =
+    product.images?.find(
+      (src) => typeof src === "string" && src.trim().length > 0,
+    ) ?? PLACEHOLDER;
 
   return (
     <motion.div
@@ -39,7 +45,7 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
       >
         <div className="relative aspect-[4/5] overflow-hidden bg-secondary">
           <Image
-            src={product.images[0]}
+            src={cover}
             alt={product.name}
             fill
             sizes="(max-width: 768px) 50vw, 25vw"

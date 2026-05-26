@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { loginSchema, type LoginSchema } from "@/lib/validations";
 import { setAdminSession } from "@/lib/auth";
+import { siteConfig } from "@/config/site";
 
 export function LoginForm() {
   const router = useRouter();
@@ -56,7 +57,7 @@ export function LoginForm() {
         <div>
           <h1 className="font-serif text-xl font-semibold">Admin Login</h1>
           <p className="text-xs text-muted-foreground">
-            Masuk untuk mengelola produk Bloomera.
+            Masuk untuk mengelola produk {siteConfig.displayName}.
           </p>
         </div>
       </div>
@@ -66,7 +67,7 @@ export function LoginForm() {
         <Input
           id="email"
           type="email"
-          placeholder="admin@bloomera.id"
+          placeholder={siteConfig.adminEmailPlaceholder}
           {...register("email")}
         />
         {errors.email && (

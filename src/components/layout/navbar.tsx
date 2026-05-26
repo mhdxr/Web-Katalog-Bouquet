@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Flower2, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { siteConfig } from "@/config/site";
 
 const navLinks = [
   { href: "/", label: "Beranda" },
@@ -26,7 +27,7 @@ export function Navbar() {
             <Flower2 className="h-5 w-5" />
           </span>
           <span className="font-serif text-xl font-semibold tracking-tight">
-            Bloomera
+            {siteConfig.displayName}
           </span>
         </Link>
 

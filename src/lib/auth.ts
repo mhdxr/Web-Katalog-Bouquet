@@ -1,6 +1,6 @@
 "use client";
 
-const SESSION_KEY = "bloomera:admin-session";
+const SESSION_KEY = "mushida:admin-session";
 
 export interface AdminSession {
   email: string;

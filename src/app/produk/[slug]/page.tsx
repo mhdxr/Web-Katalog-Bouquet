@@ -15,6 +15,7 @@ import {
 } from "@/data/products";
 import { categoryMap } from "@/data/categories";
 import { formatCurrency } from "@/lib/utils";
+import { siteConfig } from "@/config/site";
 
 interface PageProps {
   params: { slug: string };
@@ -50,8 +51,7 @@ export default function ProductDetailPage({ params }: PageProps) {
   const isAvailable =
     product.isAvailable && product.badge !== "sold-out";
 
-  const siteUrl =
-    process.env.NEXT_PUBLIC_SITE_URL || "https://bloomera.vercel.app";
+  const siteUrl = siteConfig.url;
   const productJsonLd = {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -60,7 +60,7 @@ export default function ProductDetailPage({ params }: PageProps) {
     image: product.images,
     sku: product.id,
     category: cat?.name,
-    brand: { "@type": "Brand", name: "Bloomera" },
+    brand: { "@type": "Brand", name: siteConfig.displayName },
     offers: {
       "@type": "Offer",
       url: `${siteUrl}/produk/${product.slug}`,

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { LogOut, Plus, RotateCcw } from "lucide-react";
+import { AlertTriangle, LogOut, Plus, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProductForm } from "@/components/admin/product-form";
 import { ProductTable } from "@/components/admin/product-table";
@@ -92,11 +92,17 @@ export function AdminDashboard() {
 
   return (
     <div className="container py-10 md:py-12">
-      <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-            Admin Dashboard
-          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
+              Admin Dashboard
+            </p>
+            <span className="inline-flex items-center gap-1 rounded-full border border-amber-300/60 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-700">
+              <AlertTriangle className="h-3 w-3" />
+              Demo Local Admin
+            </span>
+          </div>
           <h1 className="mt-2 font-serif text-3xl font-semibold tracking-tight">
             Kelola Produk
           </h1>
@@ -124,6 +130,19 @@ export function AdminDashboard() {
             <Plus className="h-4 w-4" />
             Tambah produk
           </Button>
+        </div>
+      </div>
+
+      <div className="mb-8 flex items-start gap-3 rounded-2xl border border-amber-300/60 bg-amber-50 p-4 text-sm text-amber-900">
+        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+        <div>
+          <p className="font-semibold">Mode demo lokal</p>
+          <p className="text-xs leading-relaxed">
+            Perubahan produk hanya tersimpan di <code>localStorage</code> browser
+            ini. Data akan hilang saat cache dibersihkan dan tidak ter-sync ke
+            user lain. Jangan dianggap sebagai admin production sampai database
+            (Supabase / Firebase) di-wire up.
+          </p>
         </div>
       </div>
 

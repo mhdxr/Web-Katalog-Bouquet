@@ -16,7 +16,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { categories } from "@/data/categories";
-import { productSchema, type ProductSchema } from "@/lib/validations";
+import {
+  BADGE_NONE,
+  productSchema,
+  type ProductSchema,
+} from "@/lib/validations";
 import { slugify } from "@/lib/utils";
 import type { Product, ProductBadge, ProductCategory } from "@/types";
 
@@ -42,7 +46,7 @@ export function ProductForm({ initial, onSubmit, onCancel }: ProductFormProps) {
       price: initial?.price ?? 0,
       category: initial?.category ?? "hand-bouquet",
       images: initial?.images.join("\n") ?? "",
-      badge: initial?.badge ?? "",
+      badge: initial?.badge ?? BADGE_NONE,
       isAvailable: initial?.isAvailable ?? true,
     },
   });
@@ -55,7 +59,7 @@ export function ProductForm({ initial, onSubmit, onCancel }: ProductFormProps) {
         price: initial.price,
         category: initial.category,
         images: initial.images.join("\n"),
-        badge: initial.badge ?? "",
+        badge: initial.badge ?? BADGE_NONE,
         isAvailable: initial.isAvailable,
       });
     }
@@ -70,13 +74,16 @@ export function ProductForm({ initial, onSubmit, onCancel }: ProductFormProps) {
       .split("\n")
       .map((u) => u.trim())
       .filter(Boolean);
+    // Sentinel "none" → undefined (tidak ada badge).
+    const badgeValue: ProductBadge | undefined =
+      data.badge === BADGE_NONE ? undefined : (data.badge as ProductBadge);
     const payload = {
       name: data.name,
       description: data.description,
       price: Number(data.price),
       category: data.category,
       images,
-      badge: data.badge === "" ? undefined : (data.badge as ProductBadge),
+      badge: badgeValue,
       isAvailable: data.isAvailable,
       slug: initial?.slug ?? slugify(data.name),
     };
@@ -132,9 +139,9 @@ export function ProductForm({ initial, onSubmit, onCancel }: ProductFormProps) {
         <div className="space-y-2">
           <Label>Badge</Label>
           <Select
-            value={badge || ""}
+            value={badge ?? BADGE_NONE}
             onValueChange={(v) =>
-              setValue("badge", v as ProductBadge | "", {
+              setValue("badge", v as ProductSchema["badge"], {
                 shouldValidate: true,
               })
             }
@@ -143,7 +150,7 @@ export function ProductForm({ initial, onSubmit, onCancel }: ProductFormProps) {
               <SelectValue placeholder="Tanpa badge" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Tanpa badge</SelectItem>
+              <SelectItem value={BADGE_NONE}>Tanpa badge</SelectItem>
               <SelectItem value="best-seller">Best Seller</SelectItem>
               <SelectItem value="new">New</SelectItem>
               <SelectItem value="sold-out">Sold Out</SelectItem>

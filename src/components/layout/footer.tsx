@@ -1,7 +1,18 @@
 import Link from "next/link";
 import { Flower2, Instagram, MessageCircle, Mail } from "lucide-react";
+import { siteConfig } from "@/config/site";
+
+function formatWhatsAppDisplay(num: string): string {
+  // Tampilkan format "0812-3456-7890" untuk nomor Indonesia (62...).
+  if (num.startsWith("62") && num.length >= 10) {
+    const local = `0${num.slice(2)}`;
+    return local.replace(/(\d{4})(\d{4})(\d+)/, "$1-$2-$3");
+  }
+  return num;
+}
 
 export function Footer() {
+  const waDisplay = formatWhatsAppDisplay(siteConfig.whatsappNumber);
   return (
     <footer className="border-t border-border/60 bg-cream-50">
       <div className="container py-12">
@@ -11,7 +22,9 @@ export function Footer() {
               <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
                 <Flower2 className="h-5 w-5" />
               </span>
-              <span className="font-serif text-xl font-semibold">Bloomera</span>
+              <span className="font-serif text-xl font-semibold">
+                {siteConfig.displayName}
+              </span>
             </Link>
             <p className="text-sm text-muted-foreground">
               Hand-tied bouquet artisan untuk setiap momen berharga.
@@ -88,22 +101,25 @@ export function Footer() {
             <ul className="space-y-3 text-sm text-muted-foreground">
               <li className="flex items-center gap-2">
                 <MessageCircle className="h-4 w-4 text-primary" />
-                <span>WhatsApp 0812-3456-7890</span>
+                <span>WhatsApp {waDisplay}</span>
               </li>
               <li className="flex items-center gap-2">
                 <Instagram className="h-4 w-4 text-primary" />
-                <span>@bloomera.id</span>
+                <span>@{siteConfig.instagramHandle}</span>
               </li>
               <li className="flex items-center gap-2">
                 <Mail className="h-4 w-4 text-primary" />
-                <span>hello@bloomera.id</span>
+                <span>{siteConfig.contactEmail}</span>
               </li>
             </ul>
           </div>
         </div>
 
         <div className="mt-12 flex flex-col items-center justify-between gap-3 border-t border-border/60 pt-6 text-xs text-muted-foreground md:flex-row">
-          <p>© {new Date().getFullYear()} Bloomera. All rights reserved.</p>
+          <p>
+            © {new Date().getFullYear()} {siteConfig.displayName}. All rights
+            reserved.
+          </p>
           <p>Made with 🌸 in Indonesia.</p>
         </div>
       </div>
