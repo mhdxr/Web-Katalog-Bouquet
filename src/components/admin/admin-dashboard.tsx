@@ -33,25 +33,35 @@ export function AdminDashboard({ adminEmail }: AdminDashboardProps) {
   /**
    * Setelah CRUD berhasil, panggil server action untuk:
    *  1. revalidateTag("products") → invalidate cache `unstable_cache`.
-   *  2. revalidatePath("/", "/katalog", "/produk", "/sitemap.xml") →
+   *  2. revalidatePath("/", "/katalog", "/produk/[slug]", "/sitemap.xml") →
    *     paksa Server Component re-render saat user buka halaman publik
    *     berikutnya.
-   * Hasilnya: perubahan admin langsung visible di public catalog tanpa
-   * perlu redeploy.
+   *  3. revalidatePath untuk slug spesifik (lama & baru saat rename,
+   *     atau slug yang dihapus) supaya cache detail benar-benar fresh
+   *     dan slug yang dihapus jadi 404.
+   *
+   * Kegagalan revalidate ditampilkan ke admin via toast supaya admin
+   * tahu kalau public belum tentu fresh dan bisa retry/refresh manual.
    */
-  const refreshPublicCache = async () => {
+  const refreshPublicCache = async (slugs: string[] = []) => {
     try {
-      const result = await revalidateProducts();
+      const result = await revalidateProducts({ slugs });
       if (!result.ok) {
+        const msg = result.error ?? "unknown";
         // eslint-disable-next-line no-console
-        console.warn(
-          "[admin] revalidateProducts gagal:",
-          result.error ?? "unknown",
+        console.warn("[admin] revalidateProducts gagal:", msg);
+        toast.error(
+          `Cache publik gagal di-refresh (${msg}). Data tetap tersimpan, ` +
+            "tapi katalog mungkin perlu beberapa detik untuk update.",
         );
       }
     } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
       // eslint-disable-next-line no-console
-      console.warn("[admin] revalidateProducts error:", e);
+      console.warn("[admin] revalidateProducts error:", msg);
+      toast.error(
+        `Gagal memanggil revalidate (${msg}). Coba refresh halaman publik secara manual.`,
+      );
     }
   };
 
@@ -59,11 +69,12 @@ export function AdminDashboard({ adminEmail }: AdminDashboardProps) {
     data: Omit<Product, "id" | "createdAt"> | Partial<Product>,
   ) => {
     try {
-      await create(data as Omit<Product, "id" | "createdAt">);
+      const created = await create(data as Omit<Product, "id" | "createdAt">);
       setShowForm(false);
       setEditing(null);
       toast.success("Produk berhasil ditambahkan.");
-      await refreshPublicCache();
+      const newSlug = created?.slug ?? (data as { slug?: string }).slug;
+      await refreshPublicCache(newSlug ? [newSlug] : []);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Gagal menambahkan produk.";
       toast.error(msg);
@@ -75,11 +86,15 @@ export function AdminDashboard({ adminEmail }: AdminDashboardProps) {
   ) => {
     if (!editing) return;
     try {
-      await update(editing.id, data as Partial<Product>);
+      const oldSlug = editing.slug;
+      const updated = await update(editing.id, data as Partial<Product>);
+      const newSlug =
+        updated?.slug ?? (data as { slug?: string }).slug ?? oldSlug;
       setShowForm(false);
       setEditing(null);
       toast.success("Produk berhasil diperbarui.");
-      await refreshPublicCache();
+      // Selalu kirim oldSlug & newSlug — kalau sama, helper akan dedup.
+      await refreshPublicCache([oldSlug, newSlug].filter(Boolean) as string[]);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Gagal memperbarui produk.";
       toast.error(msg);
@@ -91,7 +106,7 @@ export function AdminDashboard({ adminEmail }: AdminDashboardProps) {
     try {
       await remove(p.id);
       toast.success(`"${p.name}" dihapus.`);
-      await refreshPublicCache();
+      await refreshPublicCache([p.slug]);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Gagal menghapus produk.";
       toast.error(msg);

@@ -75,9 +75,13 @@ export function ProductTable({
                 </td>
                 <td className="px-4 py-3">
                   {p.isAvailable ? (
-                    <Badge variant="success">Aktif</Badge>
+                    <Badge variant="success" title="Tampil di publik">
+                      Tampil
+                    </Badge>
                   ) : (
-                    <Badge variant="muted">Nonaktif</Badge>
+                    <Badge variant="muted" title="Disembunyikan dari publik">
+                      Hidden
+                    </Badge>
                   )}
                   {p.badge === "best-seller" && (
                     <Badge className="ml-1">Best</Badge>
@@ -85,6 +89,11 @@ export function ProductTable({
                   {p.badge === "new" && (
                     <Badge variant="accent" className="ml-1">
                       New
+                    </Badge>
+                  )}
+                  {p.badge === "sold-out" && (
+                    <Badge variant="muted" className="ml-1">
+                      Sold Out
                     </Badge>
                   )}
                 </td>

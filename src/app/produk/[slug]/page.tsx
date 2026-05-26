@@ -63,6 +63,12 @@ export async function generateMetadata({
 }
 
 export default async function ProductDetailPage({ params }: PageProps) {
+  // Public fetcher pakai anon Supabase client → RLS otomatis filter
+  // produk dengan `is_available = false`. Jadi kalau admin men-set
+  // is_available=false (hidden), `fetchProductBySlug` mengembalikan
+  // undefined → notFound() / 404. Yang sampai sini selalu produk yang
+  // boleh dilihat publik (is_available = true), termasuk yang badge
+  // "sold-out".
   const product = await fetchProductBySlug(params.slug);
   if (!product) {
     notFound();
@@ -70,8 +76,10 @@ export default async function ProductDetailPage({ params }: PageProps) {
 
   const cat = categoryMap[product.category];
   const related = await fetchRelatedProducts(product, 4);
-  const isAvailable =
-    product.isAvailable && product.badge !== "sold-out";
+  // Sold-out = produk masih tampil tapi tombol order disabled.
+  // (is_available=false sudah disaring di RLS → di sini selalu true.)
+  const isSoldOut = product.badge === "sold-out";
+  const isAvailable = !isSoldOut;
 
   const siteUrl = siteConfig.url;
   const productJsonLd = {

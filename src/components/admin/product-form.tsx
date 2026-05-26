@@ -156,10 +156,16 @@ export function ProductForm({ initial, onSubmit, onCancel }: ProductFormProps) {
               <SelectItem value="sold-out">Sold Out</SelectItem>
             </SelectContent>
           </Select>
+          <p className="text-[11px] leading-relaxed text-muted-foreground">
+            <strong>Sold Out</strong> = produk tetap tampil di katalog,
+            tombol order otomatis nonaktif. Kalau ingin produk benar-benar
+            disembunyikan dari publik, matikan checkbox <em>Tampil di publik</em> di
+            bawah.
+          </p>
         </div>
 
         <div className="space-y-2">
-          <Label>Status</Label>
+          <Label>Visibilitas publik</Label>
           <div className="flex h-11 items-center gap-3 rounded-xl border border-input bg-background px-4">
             <input
               id="isAvailable"
@@ -173,9 +179,18 @@ export function ProductForm({ initial, onSubmit, onCancel }: ProductFormProps) {
               className="h-4 w-4 rounded border-input accent-primary"
             />
             <label htmlFor="isAvailable" className="text-sm">
-              Tersedia / aktif
+              Tampil di publik (
+              <code className="rounded bg-secondary px-1 text-[10px]">
+                is_available
+              </code>
+              )
             </label>
           </div>
+          <p className="text-[11px] leading-relaxed text-muted-foreground">
+            Matikan = produk <strong>disembunyikan</strong> dari /katalog &
+            detail (404). Aktif = produk muncul; pakai badge <em>Sold Out</em> di
+            atas kalau hanya ingin menonaktifkan tombol order.
+          </p>
         </div>
 
         <div className="space-y-2 md:col-span-2">

@@ -4,9 +4,9 @@ import type { Product } from "@/types";
  * Interface kontrak untuk semua product repository.
  *
  * Implementasi yang tersedia:
- * - localStorageProductRepository  → default (data tersimpan di browser)
- * - supabaseProductRepository      → stub, aktifkan setelah env Supabase di-set
- * - firebaseProductRepository      → stub, aktifkan setelah env Firebase di-set
+ * - supabaseProductRepository      → DEFAULT production. Aktif kalau
+ *                                    env NEXT_PUBLIC_SUPABASE_* lengkap.
+ * - localStorageProductRepository  → fallback development saja.
  *
  * Semua method async sehingga UI tidak peduli backend yang dipakai.
  */

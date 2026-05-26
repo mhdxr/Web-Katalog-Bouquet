@@ -15,7 +15,7 @@ Aplikasi web katalog profesional untuk toko bouquet/bucket bunga dengan fitur or
 - **Katalog responsif** — grid produk, search, filter kategori & rentang harga, badge (Best Seller / New / Sold Out), empty state.
 - **Detail produk** — gallery gambar (dengan fallback placeholder), deskripsi, status ketersediaan, tombol order WhatsApp, produk terkait.
 - **Custom order page** — form Zod-validated, submit langsung mengarah ke WhatsApp dengan pesan otomatis.
-- **Production admin dashboard** — Supabase Auth (`signInWithPassword`) + whitelist `admin_users`. CRUD produk langsung tersimpan ke Supabase dan terlihat di `/katalog` real-time.
+- **Production admin dashboard** — Supabase Auth (`signInWithPassword`) + whitelist `admin_users`. CRUD produk langsung tersimpan ke Supabase, dan setiap perubahan men-trigger `revalidateTag("products")` + revalidasi path slug terkait sehingga `/katalog` & `/produk/[slug]` langsung fresh tanpa redeploy.
 - **SEO friendly** — metadata + Open Graph + Twitter card + JSON-LD per produk, datanya di-fetch dari Supabase di Server Component.
 - **UI premium** — palette soft pink, cream, gold; mobile-first; animasi halus dengan Framer Motion.
 
@@ -145,7 +145,7 @@ Login pakai akun yang sudah dibuat di **Supabase Auth** dan terdaftar di tabel `
 
 - ✅ Tambah / edit / hapus produk — langsung tersimpan ke Supabase.
 - ✅ Set badge (Best Seller / New / Sold Out).
-- ✅ Toggle ketersediaan (`is_available`) → mempengaruhi visibility di `/katalog`.
+- ✅ Toggle visibilitas publik (`is_available`) — lihat [Hidden vs Sold Out](#-hidden-vs-sold-out) di bawah.
 - ✅ Logout via `supabase.auth.signOut()`.
 
 **Cara membuat admin pertama:**
@@ -161,6 +161,43 @@ Login pakai akun yang sudah dibuat di **Supabase Auth** dan terdaftar di tabel `
 3. Login di `/admin/login` pakai email + password user tersebut.
 
 > **Keamanan**: Session disimpan di cookie `sb-*` yang di-handle Supabase + middleware Next.js (`src/middleware.ts`). Tidak ada session di `localStorage`. Server guard (`getAdminUser()` di `src/lib/auth.ts`) memvalidasi user via `supabase.auth.getUser()` + lookup ke tabel `admin_users` di setiap request `/admin/dashboard`. RLS di tabel `products` jadi guard terakhir untuk operasi tulis.
+
+---
+
+## 👁️ Hidden vs Sold Out
+
+Dua state yang sering tertukar — di Mushida keduanya **eksplisit dipisah**:
+
+| Kondisi                                       | Tampil di `/katalog`?     | `/produk/[slug]` publik | Tombol order        | Use case                                     |
+| --------------------------------------------- | ------------------------- | ----------------------- | ------------------- | -------------------------------------------- |
+| `is_available = true` & `badge ≠ "sold-out"`  | ✅ Tampil                 | ✅ 200 OK               | ✅ Aktif            | Produk normal & ready order.                 |
+| `is_available = true` & `badge = "sold-out"`  | ✅ Tampil                 | ✅ 200 OK (status Sold Out) | ❌ Disabled     | Stok habis sementara, biar tetap kelihatan supaya pengunjung tahu produknya ada. |
+| `is_available = false` (badge apapun)         | ❌ Disembunyikan          | ❌ 404                  | —                   | Draft, produk lama, produk yang sudah tidak dijual. |
+
+**Cara kerja di balik layar:**
+
+- Visibility ditegakkan di **RLS Supabase**: anonim/publik hanya boleh `SELECT` row dengan `is_available = true`. Jadi kalau admin men-set `is_available = false`, query publik (`fetchAllProducts`, `fetchProductBySlug`, sitemap) tidak akan mendapatkan row tersebut → otomatis hilang dari katalog dan slug detail jadi `notFound() / 404`.
+- Sold-out hanya berdasar field `badge`. Tombol order di `/produk/[slug]` & `<OrderButton>` di-disable kalau `badge === "sold-out"` (atau secara teknis `is_available = false`, walau case ini publik tidak pernah lihat).
+- Sitemap (`/sitemap.xml`) ikut RLS — produk hidden otomatis tidak muncul di sitemap.
+
+**Aksi admin:**
+
+- Sembunyikan produk dari publik → matikan checkbox **"Tampil di publik"** di form produk (`is_available = false`).
+- Tandai stok habis tapi tetap pamer → set badge **"Sold Out"** dan biarkan checkbox **"Tampil di publik"** tetap aktif.
+
+---
+
+## 🔁 Cache & Revalidation
+
+Halaman publik di-render via Server Component dengan ISR (`revalidate = 60`) plus `unstable_cache` ber-tag `"products"`. Setelah admin create/update/delete, dashboard memanggil Server Action `revalidateProducts({ slugs })` yang melakukan:
+
+- `revalidateTag("products")` — meng-invalidate semua entri `unstable_cache` yang men-tag `products` (list, by-slug, featured, related).
+- `revalidatePath("/", "page")` & `revalidatePath("/katalog", "page")` — refresh landing & katalog.
+- `revalidatePath("/produk/[slug]", "page")` — refresh seluruh detail produk yang sudah pernah di-render.
+- `revalidatePath("/sitemap.xml")` — sitemap ikut fresh.
+- `revalidatePath("/produk/<slug>", "page")` untuk slug spesifik — wajib saat **rename slug** (slug lama & baru) dan saat **delete** (slug lama langsung 404).
+
+Server Action `revalidateProducts` di-guard dengan `getAdminUser()` (Supabase Auth + tabel `admin_users`) supaya tidak bisa dipanggil non-admin. Kegagalan revalidate ditampilkan ke admin via toast error sehingga admin tahu kalau perlu refresh manual.
 
 ---
 

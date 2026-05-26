@@ -29,23 +29,28 @@ export function useProducts() {
   }, [refresh]);
 
   const create = useCallback(
-    async (input: Omit<Product, "id" | "createdAt">) => {
-      await repository.create(input);
+    async (input: Omit<Product, "id" | "createdAt">): Promise<Product> => {
+      const created = await repository.create(input);
       await refresh();
+      return created;
     },
     [refresh, repository],
   );
 
   const update = useCallback(
-    async (id: string, input: Partial<Product>) => {
-      await repository.update(id, input);
+    async (
+      id: string,
+      input: Partial<Product>,
+    ): Promise<Product | undefined> => {
+      const updated = await repository.update(id, input);
       await refresh();
+      return updated;
     },
     [refresh, repository],
   );
 
   const remove = useCallback(
-    async (id: string) => {
+    async (id: string): Promise<void> => {
       await repository.remove(id);
       await refresh();
     },
