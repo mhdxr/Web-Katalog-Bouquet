@@ -66,6 +66,10 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=eyJhbGciOi...   # anon/publishable key, buk
 # Sosial media (opsional, kosongkan untuk pakai default mushida.id).
 NEXT_PUBLIC_INSTAGRAM_URL=https://instagram.com/mushida.id
 NEXT_PUBLIC_FACEBOOK_URL=https://facebook.com/mushida.id
+
+# Maintenance mode (opsional). false = normal, true = public route
+# di-redirect ke /maintenance, admin tetap bisa login.
+MAINTENANCE_MODE=false
 ```
 
 > **Catatan**:
@@ -369,12 +373,86 @@ Workflow GitHub Actions di `.github/workflows/ci.yml` menjalankan `npm ci`, `npm
 
 ---
 
+## ✅ Manual Testing Checklist
+
+Sebelum mengaktifkan domain produksi, jalankan dulu seluruh checklist berikut. Idealnya dilakukan di window normal **dan** incognito (untuk memastikan halaman publik tetap statis tanpa cookie admin).
+
+### Pre-deploy (lokal / staging)
+
+- [ ] `npm install` selesai tanpa error.
+- [ ] `.env.local` lengkap (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_WHATSAPP_NUMBER`, `ADMIN_EMAIL`).
+- [ ] `supabase/setup.sql` sudah dijalankan di Supabase SQL Editor.
+- [ ] User admin sudah dibuat manual di **Authentication → Users**, lalu UUID-nya sudah di-insert ke `public.admin_users` (section 10 di `setup.sql`).
+- [ ] Bucket `product-images` sudah aktif (otomatis dari `setup.sql`, bisa dicek di **Storage**).
+- [ ] `npm run lint`, `npm run type-check`, dan `npm run build` lulus.
+
+### Admin flow (window normal)
+
+- [ ] Buka `/admin/login` → form muncul, placeholder email = `admin@mushida.me`.
+- [ ] Login dengan kredensial admin → ter-redirect ke `/admin/dashboard`.
+- [ ] Login dengan kredensial valid Supabase Auth tapi user belum ada di `admin_users` → tampil pesan "Akun ini belum terdaftar sebagai admin" dan otomatis sign-out.
+- [ ] **Tambah produk**: klik **Tambah produk**, isi semua field, klik **Pilih file gambar**, pilih JPG/PNG/WEBP < 3 MB, preview muncul, gambar pertama otomatis ditandai **Cover**, lalu **Simpan produk** → toast sukses.
+- [ ] **Edit produk**: ubah harga/deskripsi → toast "Produk berhasil diperbarui".
+- [ ] **Hapus produk**: konfirmasi dialog → toast "... dihapus".
+- [ ] **Test Sold Out**: edit produk, set badge **Sold Out**, biarkan checkbox "Tampil di publik" tetap aktif, simpan.
+- [ ] **Test Hidden**: edit produk, matikan checkbox "Tampil di publik" (`is_available = false`), simpan.
+- [ ] **Logout**: tombol Logout → kembali ke `/admin/login`.
+
+### Public flow (window incognito, tanpa cookie admin)
+
+- [ ] `/` (landing) load tanpa error, hero & featured produk muncul.
+- [ ] `/katalog` menampilkan semua produk dengan `is_available = true`. Produk yang baru ditambahkan admin **muncul tanpa redeploy**.
+- [ ] Filter kategori & rentang harga bekerja.
+- [ ] `/produk/<slug-produk-baru>` membuka detail produk (200 OK), gambar muncul (atau fallback placeholder jika kosong).
+- [ ] Produk dengan badge **Sold Out** **tetap muncul** di katalog & detail; tombol order ber-label **"Stok Habis"** dan disabled.
+- [ ] Produk hidden (`is_available = false`) **tidak muncul** di katalog dan `/produk/<slug>`-nya **404**.
+- [ ] Tombol **Order via WhatsApp** membuka `wa.me/<NEXT_PUBLIC_WHATSAPP_NUMBER>` dengan pesan terisi.
+- [ ] `/sitemap.xml` ter-load dan **hanya** berisi produk dengan `is_available = true`.
+- [ ] `/robots.txt` mem-blokir `/admin` & `/api`.
+- [ ] DevTools → Application → Cookies: tidak ada cookie `sb-*` sama sekali untuk pengunjung publik (cookie hanya muncul setelah login admin).
+
+### Security guard
+
+- [ ] Buka `/admin/dashboard` di incognito (belum login) → redirect ke `/admin/login`.
+- [ ] Login sebagai user Supabase yang **belum** terdaftar di `admin_users` → ditolak, di-sign-out otomatis.
+- [ ] Coba upload via DevTools (panggil Server Action upload tanpa session) → response `{ ok: false, error: "UNAUTHORIZED" }`.
+- [ ] Tidak ada route `/debug-env`, `/api/debug-*`, atau halaman debug lain di build output.
+- [ ] Tidak ada `service_role` key di env / source / output build.
+
+### Post-deploy (Vercel production)
+
+- [ ] Vercel build sukses dengan env Supabase production.
+- [ ] `https://mushida-craft.vercel.app/` ter-load.
+- [ ] `https://mushida-craft.vercel.app/sitemap.xml` valid XML.
+- [ ] Admin bisa login & CRUD; perubahan langsung tampil di public katalog (≤ 60 detik karena ISR + revalidateTag).
+
+---
+
 ## ☁️ Deploy ke Vercel
 
 1. Push repo ke GitHub.
 2. Import project di [vercel.com](https://vercel.com).
 3. Set environment variables sesuai `.env.example`.
 4. Deploy.
+
+> ⚠️ Setiap kali env di Vercel berubah (termasuk `MAINTENANCE_MODE`), **wajib redeploy** supaya nilai baru ter-pickup oleh runtime.
+
+---
+
+## 🛠️ Maintenance & Operations
+
+Dokumentasi operasional lengkap (routine maintenance, product / Supabase / deployment / security maintenance, troubleshooting, dan **maintenance mode**) ada di [`docs/MAINTENANCE.md`](docs/MAINTENANCE.md).
+
+### Maintenance mode singkat
+
+Untuk menutup public site sementara saat ada update besar:
+
+1. Set env `MAINTENANCE_MODE=true` (di `.env.local` lokal atau Vercel → Settings → Environment Variables).
+2. **Redeploy** kalau di Vercel.
+3. Public route otomatis di-redirect ke `/maintenance`. Halaman admin (`/admin/*`) tetap berfungsi normal supaya bisa update data.
+4. Untuk mematikan: set `MAINTENANCE_MODE=false` (atau hapus variable-nya), lalu redeploy.
+
+Detail lengkap (path apa saja yang di-bypass, SEO behavior, tips operasional) lihat [`docs/MAINTENANCE.md`](docs/MAINTENANCE.md#-maintenance-mode).
 
 ---
 

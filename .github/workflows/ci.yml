@@ -38,8 +38,14 @@ jobs:
         env:
           # Default placeholder values supaya build bisa jalan tanpa secrets.
           # Override via repo Secrets/Variables jika perlu.
+          # Supabase URL/Key di-set ke placeholder dummy supaya hostname
+          # remotePatterns ter-include dan fetcher publik tidak throw saat
+          # generateStaticParams. Data di-fallback ke seed lokal otomatis
+          # karena fetcher gagal connect ke project dummy. Untuk production
+          # build di Vercel, set secret Supabase yang asli.
           NEXT_PUBLIC_WHATSAPP_NUMBER: "6285713254800"
           NEXT_PUBLIC_SITE_URL: "https://mushida-craft.vercel.app"
+          NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co"
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "ci-build-placeholder"
           ADMIN_EMAIL: "admin@mushida.me"
-          ADMIN_PASSWORD: "changeme123"
         run: npm run build
