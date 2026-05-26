@@ -44,6 +44,9 @@ export const localStorageProductRepository: ProductRepository = {
   async getById(id) {
     return readAll().find((p) => p.id === id);
   },
+  async getBySlug(slug) {
+    return readAll().find((p) => p.slug === slug);
+  },
   async create(input) {
     const items = readAll();
     const newProduct: Product = {

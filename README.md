@@ -1,6 +1,6 @@
 # 🌸 Mushida — Web Katalog Bouquet
 
-Aplikasi web katalog profesional untuk toko bouquet/bucket bunga dengan fitur order via WhatsApp, custom request, dan demo admin dashboard. Dibangun dengan stack modern dan siap deploy ke Vercel.
+Aplikasi web katalog profesional untuk toko bouquet/bucket bunga dengan fitur order via WhatsApp, custom request, dan **production admin dashboard** berbasis Supabase. Dibangun dengan stack modern dan siap deploy ke Vercel.
 
 ![Next.js](https://img.shields.io/badge/Next.js-14-black?logo=next.js)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)
@@ -15,8 +15,8 @@ Aplikasi web katalog profesional untuk toko bouquet/bucket bunga dengan fitur or
 - **Katalog responsif** — grid produk, search, filter kategori & rentang harga, badge (Best Seller / New / Sold Out), empty state.
 - **Detail produk** — gallery gambar (dengan fallback placeholder), deskripsi, status ketersediaan, tombol order WhatsApp, produk terkait.
 - **Custom order page** — form Zod-validated, submit langsung mengarah ke WhatsApp dengan pesan otomatis.
-- **Demo admin dashboard** — login email/password dari env, CRUD produk dengan localStorage. Diberi label "Demo Local Admin" agar tidak salah dianggap production.
-- **SEO friendly** — metadata + Open Graph + Twitter card + JSON-LD, semuanya sentral di `siteConfig`.
+- **Production admin dashboard** — Supabase Auth (`signInWithPassword`) + whitelist `admin_users`. CRUD produk langsung tersimpan ke Supabase dan terlihat di `/katalog` real-time.
+- **SEO friendly** — metadata + Open Graph + Twitter card + JSON-LD per produk, datanya di-fetch dari Supabase di Server Component.
 - **UI premium** — palette soft pink, cream, gold; mobile-first; animasi halus dengan Framer Motion.
 
 ## 🛠️ Tech Stack
@@ -50,13 +50,24 @@ cp .env.example .env.local
 ```
 
 ```env
+# WhatsApp tujuan order (format internasional tanpa "+").
 NEXT_PUBLIC_WHATSAPP_NUMBER=6285713254800
-ADMIN_EMAIL=admin@mushida.id
-ADMIN_PASSWORD=changeme123
+
+# URL produksi (untuk SEO + JSON-LD).
 NEXT_PUBLIC_SITE_URL=https://mushida-craft.vercel.app
+
+# Email admin (placeholder login saja — autentikasi sebenarnya pakai Supabase Auth).
+ADMIN_EMAIL=admin@mushida.me
+
+# Supabase (WAJIB untuk admin & data produk live).
+NEXT_PUBLIC_SUPABASE_URL=https://xxxxxxxxxxxxxxxxxxxx.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=eyJhbGciOi...   # anon/publishable key, bukan service role
 ```
 
-> **Catatan**: `NEXT_PUBLIC_WHATSAPP_NUMBER` harus format internasional tanpa `+` (contoh: `6285713254800`). Di production env ini **wajib valid** — jika kosong / format salah, build & runtime akan **throw error** dengan pesan jelas. Di development boleh dikosongkan; helper otomatis pakai nomor dummy supaya UI tetap bisa dicoba.
+> **Catatan**:
+> - `NEXT_PUBLIC_WHATSAPP_NUMBER` harus format internasional tanpa `+` (contoh: `6285713254800`). Di production env ini **wajib valid** — jika kosong / format salah, helper akan **throw error**. Di development boleh dikosongkan; otomatis pakai nomor dummy.
+> - `NEXT_PUBLIC_SUPABASE_*` ambil dari Supabase Dashboard → **Settings → API**. Pakai **anon/publishable key**, bukan service role. Service role tidak boleh di-set di env `NEXT_PUBLIC_*` karena akan ter-expose ke browser.
+> - Setup tabel + RLS: jalankan `supabase/schema.sql` lalu `supabase/seed.sql` di Supabase SQL Editor (lihat bagian [Setup Supabase](#-setup-supabase)).
 
 ### 3. Jalankan development server
 
@@ -95,45 +106,65 @@ src/
 ├── hooks/
 │   └── use-products.ts        # Memakai chooseProductRepository()
 ├── lib/
-│   ├── auth.ts                # Session admin di localStorage
+│   ├── auth.ts                # Server-side admin guard (Supabase Auth + admin_users)
 │   ├── product-store.ts       # Re-export tipis dari repositories (backward compat)
 │   ├── repositories/          # ⭐ Layer data
 │   │   ├── types.ts                          # Interface ProductRepository
-│   │   ├── local-storage-product-repository.ts
-│   │   ├── supabase-product-repository.ts    # STUB
-│   │   └── index.ts                          # Factory chooseProductRepository()
+│   │   ├── local-storage-product-repository.ts  # fallback dev
+│   │   ├── supabase-product-repository.ts       # implementasi production
+│   │   └── index.ts                             # Factory chooseProductRepository()
+│   ├── server/
+│   │   └── products.ts        # ⭐ Fetcher RSC (cookieless anon → static-friendly)
+│   ├── supabase/
+│   │   ├── client.ts          # Browser client (signIn / signOut / RT subscriptions)
+│   │   ├── server.ts          # Server client (baca cookie sesi)
+│   │   ├── anon-server.ts     # Anon cookieless client (build-time + sitemap)
+│   │   ├── proxy.ts           # Refresh sesi di edge middleware
+│   │   ├── env.ts             # Validator env Supabase
+│   │   └── types.ts           # Mapping snake_case ↔ camelCase
 │   ├── utils.ts
 │   ├── validations.ts         # Schema Zod (productSchema pakai sentinel "none")
 │   └── whatsapp.ts            # URL builder + validator nomor
+├── middleware.ts              # ⭐ Refresh Supabase session per request
 └── types/
 public/
 └── images/
     └── placeholder-bouquet.svg   # ⭐ Fallback image saat URL kosong
+supabase/
+├── schema.sql                 # ⭐ Tabel + RLS + trigger updated_at
+└── seed.sql                   # ⭐ 12 produk awal
 ```
 
 ---
 
-## 🔐 Demo Admin Dashboard
+## 🔐 Production Admin Dashboard
 
 URL: `/admin/login`
 
-Login menggunakan kredensial dari `.env.local`:
+Login pakai akun yang sudah dibuat di **Supabase Auth** dan terdaftar di tabel `admin_users`. Setelah login, kamu bisa:
 
-- `ADMIN_EMAIL`
-- `ADMIN_PASSWORD`
+- ✅ Tambah / edit / hapus produk — langsung tersimpan ke Supabase.
+- ✅ Set badge (Best Seller / New / Sold Out).
+- ✅ Toggle ketersediaan (`is_available`) → mempengaruhi visibility di `/katalog`.
+- ✅ Logout via `supabase.auth.signOut()`.
 
-Setelah login, kamu bisa:
+**Cara membuat admin pertama:**
 
-- ✅ Tambah / edit / hapus produk
-- ✅ Set badge (Best Seller / New / Sold Out)
-- ✅ Toggle ketersediaan
-- ✅ Reset data ke seed default
+1. Buka Supabase Dashboard → **Authentication → Users → Add user** (Send invite OFF supaya bisa langsung set password). Catat user `id` (UUID).
+2. Buka **SQL Editor** dan jalankan:
 
-> **Penting**: Mode ini berlabel **Demo Local Admin**. Data produk hanya tersimpan di `localStorage` browser, hilang saat cache dibersihkan, dan tidak ter-sync antar user. Jangan dipakai sebagai admin production sebelum di-wire ke database (Supabase / Firebase) dan auth provider proper (NextAuth / Clerk / Firebase / Supabase Auth).
+   ```sql
+   insert into public.admin_users (user_id, email)
+   values ('PASTE-UUID-DI-SINI', 'admin@mushida.me');
+   ```
+
+3. Login di `/admin/login` pakai email + password user tersebut.
+
+> **Keamanan**: Session disimpan di cookie `sb-*` yang di-handle Supabase + middleware Next.js (`src/middleware.ts`). Tidak ada session di `localStorage`. Server guard (`getAdminUser()` di `src/lib/auth.ts`) memvalidasi user via `supabase.auth.getUser()` + lookup ke tabel `admin_users` di setiap request `/admin/dashboard`. RLS di tabel `products` jadi guard terakhir untuk operasi tulis.
 
 ---
 
-## 💾 Data Layer & Migrasi ke Database
+## 💾 Data Layer
 
 Implementasi data product memakai pattern **Repository**. Interface di `src/lib/repositories/types.ts`:
 
@@ -141,6 +172,7 @@ Implementasi data product memakai pattern **Repository**. Interface di `src/lib/
 export interface ProductRepository {
   list(): Promise<Product[]>;
   getById(id: string): Promise<Product | undefined>;
+  getBySlug(slug: string): Promise<Product | undefined>;
   create(input: Omit<Product, "id" | "createdAt">): Promise<Product>;
   update(id: string, input: Partial<Product>): Promise<Product | undefined>;
   remove(id: string): Promise<void>;
@@ -148,13 +180,33 @@ export interface ProductRepository {
 }
 ```
 
-Tiga adapter yang disediakan:
+Adapter yang tersedia:
 
-- `localStorageProductRepository` — default, data tersimpan di browser.
-- `supabaseProductRepository` — **stub** (lihat komentar di file untuk panduan implementasi).
-- `firebaseProductRepository` — boleh ditambahkan dengan pola yang sama.
+- `supabaseProductRepository` — **default di production**. Bekerja di atas browser client (admin) maupun anon server client (public). Mapping snake_case ↔ camelCase ada di `src/lib/supabase/types.ts`.
+- `localStorageProductRepository` — fallback dev kalau env Supabase belum di-set.
 
-Pemilihan dilakukan di `chooseProductRepository()` (lihat `src/lib/repositories/index.ts`). Database tidak diaktifkan kecuali env-nya tersedia, jadi aman dijalankan dengan config minimal.
+Server Components & sitemap memakai `src/lib/server/products.ts` yang berbasis **anon cookieless client** supaya halaman publik tetap bisa di-prerender statis. Operasi admin pakai browser/server client biasa yang membaca cookie sesi.
+
+---
+
+## 🗄️ Setup Supabase
+
+1. Buat project baru di [supabase.com](https://supabase.com).
+2. Buka **SQL Editor** lalu jalankan:
+   - `supabase/schema.sql` — bikin tabel `admin_users` + `products`, trigger `updated_at`, dan **semua RLS policy**.
+   - `supabase/seed.sql` — masukkan 12 produk awal (idempoten, aman dijalankan ulang).
+3. Buat user admin pertama (lihat bagian [Production Admin Dashboard](#-production-admin-dashboard)).
+4. Salin URL + anon key ke `.env.local` / Vercel.
+
+**RLS yang aktif di `products`:**
+
+| Policy                              | Role             | Aksi                                                  |
+| ----------------------------------- | ---------------- | ----------------------------------------------------- |
+| `products_anon_select_available`    | anon             | SELECT hanya kalau `is_available = true`              |
+| `products_user_select_available`    | authenticated    | SELECT semua jika admin, else hanya available         |
+| `products_admin_insert/update/delete` | authenticated  | CRUD penuh, hanya jika `is_admin()` = true            |
+
+`is_admin()` adalah `SECURITY DEFINER` function yang mengecek keberadaan `auth.uid()` di tabel `admin_users`.
 
 ---
 
@@ -178,15 +230,11 @@ Validator: `isValidWhatsAppNumber(input)` cek format `^[1-9]\d{7,14}$` setelah `
 
 ## 🛡️ Production Readiness Notes
 
-Sebelum mendeploy ke pelanggan, perhatikan hal-hal berikut:
-
-- **Demo Local Admin**: dashboard `/admin/dashboard` saat ini **bukan admin production**. Login hanya cek pasangan `ADMIN_EMAIL`/`ADMIN_PASSWORD` dari env, dan data produk disimpan di `localStorage` browser admin yang sedang login.
-- **Data tidak tersinkronisasi**: perubahan produk hanya terlihat di browser yang melakukan perubahan. Tidak ada API server / database, jadi user lain (bahkan admin lain) **tidak akan melihat update** sampai database diaktifkan.
-- **Untuk production yang sungguhan**, pasang:
-  1. **Database**: implementasikan `supabaseProductRepository` (atau Firestore) — stub tersedia di `src/lib/repositories/`. Aktifkan via factory `chooseProductRepository()` setelah env-nya tersedia.
-  2. **Auth provider proper**: NextAuth, Clerk, Supabase Auth, atau Firebase Auth. Hapus path `localStorage` di `src/lib/auth.ts`.
-  3. **Image storage final**: ganti `next.config.mjs` `images.remotePatterns` dari Unsplash ke hostname storage yang dipakai (Supabase Storage / Cloudinary / S3 / Firebase Storage).
-  4. **WhatsApp env wajib valid** di production — `getWhatsAppNumber()` akan throw `Error` saat build/runtime kalau env kosong/format salah.
+- **Auth & data sudah production**: dashboard `/admin/dashboard` pakai Supabase Auth + RLS. Tidak ada session di `localStorage`. Perubahan produk dari admin langsung tampil di `/katalog` dan `/produk/[slug]` (RSC + ISR).
+- **Service role key**: jangan pernah ditaruh di env `NEXT_PUBLIC_*`. Aplikasi ini cukup pakai anon/publishable key — semua otorisasi di-enforce oleh RLS.
+- **Image storage**: seed produk masih pakai Unsplash. Sebelum production yang serius, ganti `next.config.mjs` `images.remotePatterns` ke hostname storage final (Supabase Storage / Cloudinary / S3) lalu update URL gambar di tabel `products`.
+- **WhatsApp env wajib valid** di production — `getWhatsAppNumber()` akan throw `Error` saat build/runtime kalau env kosong / format salah.
+- **Backup**: aktifkan Point-in-Time Recovery di Supabase (paid plan) atau jadwalkan dump berkala via `pg_dump` jika datanya sudah krusial.
 
 ## 🔒 Security Headers
 

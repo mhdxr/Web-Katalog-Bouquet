@@ -8,12 +8,20 @@ export function useProducts() {
   const repository = useMemo(() => chooseProductRepository(), []);
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setIsLoading(true);
-    const list = await repository.list();
-    setProducts(list);
-    setIsLoading(false);
+    setError(null);
+    try {
+      const list = await repository.list();
+      setProducts(list);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Gagal memuat produk.";
+      setError(msg);
+    } finally {
+      setIsLoading(false);
+    }
   }, [repository]);
 
   useEffect(() => {
@@ -49,5 +57,5 @@ export function useProducts() {
     await refresh();
   }, [refresh, repository]);
 
-  return { products, isLoading, refresh, create, update, remove, reset };
+  return { products, isLoading, error, refresh, create, update, remove, reset };
 }

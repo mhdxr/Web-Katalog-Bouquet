@@ -1,45 +1,58 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, LogOut, Plus, RotateCcw } from "lucide-react";
+import { LogOut, Plus, ShieldCheck, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProductForm } from "@/components/admin/product-form";
 import { ProductTable } from "@/components/admin/product-table";
 import { useProducts } from "@/hooks/use-products";
-import { clearAdminSession, getAdminSession } from "@/lib/auth";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { revalidateProducts } from "@/app/admin/actions";
 import type { Product } from "@/types";
 
-export function AdminDashboard() {
+interface AdminDashboardProps {
+  /** Email admin yang sudah divalidasi di server. */
+  adminEmail: string;
+}
+
+export function AdminDashboard({ adminEmail }: AdminDashboardProps) {
   const router = useRouter();
-  const { products, isLoading, create, update, remove, reset } = useProducts();
-  const [authChecked, setAuthChecked] = useState(false);
+  const { products, isLoading, error, create, update, remove } = useProducts();
   const [editing, setEditing] = useState<Product | null>(null);
   const [showForm, setShowForm] = useState(false);
-  const [adminEmail, setAdminEmail] = useState<string>("");
 
-  useEffect(() => {
-    const session = getAdminSession();
-    if (!session) {
-      router.replace("/admin/login");
-      return;
+  const handleLogout = async () => {
+    const supabase = createSupabaseBrowserClient();
+    await supabase.auth.signOut();
+    router.replace("/admin/login");
+    router.refresh();
+  };
+
+  /**
+   * Setelah CRUD berhasil, panggil server action untuk:
+   *  1. revalidateTag("products") → invalidate cache `unstable_cache`.
+   *  2. revalidatePath("/", "/katalog", "/produk", "/sitemap.xml") →
+   *     paksa Server Component re-render saat user buka halaman publik
+   *     berikutnya.
+   * Hasilnya: perubahan admin langsung visible di public catalog tanpa
+   * perlu redeploy.
+   */
+  const refreshPublicCache = async () => {
+    try {
+      const result = await revalidateProducts();
+      if (!result.ok) {
+        // eslint-disable-next-line no-console
+        console.warn(
+          "[admin] revalidateProducts gagal:",
+          result.error ?? "unknown",
+        );
+      }
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn("[admin] revalidateProducts error:", e);
     }
-    setAdminEmail(session.email);
-    setAuthChecked(true);
-  }, [router]);
-
-  if (!authChecked) {
-    return (
-      <div className="container py-20 text-center text-sm text-muted-foreground">
-        Memuat dashboard...
-      </div>
-    );
-  }
-
-  const handleLogout = () => {
-    clearAdminSession();
-    router.push("/admin/login");
   };
 
   const handleCreate = async (
@@ -50,8 +63,10 @@ export function AdminDashboard() {
       setShowForm(false);
       setEditing(null);
       toast.success("Produk berhasil ditambahkan.");
-    } catch {
-      toast.error("Gagal menambahkan produk.");
+      await refreshPublicCache();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Gagal menambahkan produk.";
+      toast.error(msg);
     }
   };
 
@@ -64,8 +79,10 @@ export function AdminDashboard() {
       setShowForm(false);
       setEditing(null);
       toast.success("Produk berhasil diperbarui.");
-    } catch {
-      toast.error("Gagal memperbarui produk.");
+      await refreshPublicCache();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Gagal memperbarui produk.";
+      toast.error(msg);
     }
   };
 
@@ -74,20 +91,11 @@ export function AdminDashboard() {
     try {
       await remove(p.id);
       toast.success(`"${p.name}" dihapus.`);
-    } catch {
-      toast.error("Gagal menghapus produk.");
+      await refreshPublicCache();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Gagal menghapus produk.";
+      toast.error(msg);
     }
-  };
-
-  const handleReset = async () => {
-    if (
-      !window.confirm(
-        "Reset data ke seed default? Semua perubahan lokal akan hilang.",
-      )
-    )
-      return;
-    await reset();
-    toast.info("Data produk direset ke seed default.");
   };
 
   return (
@@ -98,9 +106,9 @@ export function AdminDashboard() {
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
               Admin Dashboard
             </p>
-            <span className="inline-flex items-center gap-1 rounded-full border border-amber-300/60 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-700">
-              <AlertTriangle className="h-3 w-3" />
-              Demo Local Admin
+            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-300/60 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-700">
+              <ShieldCheck className="h-3 w-3" />
+              Production Admin
             </span>
           </div>
           <h1 className="mt-2 font-serif text-3xl font-semibold tracking-tight">
@@ -112,10 +120,6 @@ export function AdminDashboard() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={handleReset}>
-            <RotateCcw className="h-4 w-4" />
-            Reset data
-          </Button>
           <Button variant="outline" size="sm" onClick={handleLogout}>
             <LogOut className="h-4 w-4" />
             Logout
@@ -133,18 +137,15 @@ export function AdminDashboard() {
         </div>
       </div>
 
-      <div className="mb-8 flex items-start gap-3 rounded-2xl border border-amber-300/60 bg-amber-50 p-4 text-sm text-amber-900">
-        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-        <div>
-          <p className="font-semibold">Mode demo lokal</p>
-          <p className="text-xs leading-relaxed">
-            Perubahan produk hanya tersimpan di <code>localStorage</code> browser
-            ini. Data akan hilang saat cache dibersihkan dan tidak ter-sync ke
-            user lain. Jangan dianggap sebagai admin production sampai database
-            (Supabase / Firebase) di-wire up.
-          </p>
+      {error && (
+        <div className="mb-6 flex items-start gap-3 rounded-2xl border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <div>
+            <p className="font-semibold">Gagal memuat data dari Supabase</p>
+            <p className="text-xs leading-relaxed">{error}</p>
+          </div>
         </div>
-      </div>
+      )}
 
       {showForm && (
         <div className="mb-8 rounded-2xl border border-border/60 bg-white p-6 shadow-sm md:p-8">
@@ -164,7 +165,7 @@ export function AdminDashboard() {
 
       {isLoading ? (
         <div className="rounded-2xl border border-border/60 bg-white p-10 text-center text-sm text-muted-foreground">
-          Memuat data produk...
+          Memuat data produk dari database...
         </div>
       ) : (
         <ProductTable

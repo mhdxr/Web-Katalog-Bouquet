@@ -13,6 +13,7 @@ import type { Product } from "@/types";
 export interface ProductRepository {
   list(): Promise<Product[]>;
   getById(id: string): Promise<Product | undefined>;
+  getBySlug(slug: string): Promise<Product | undefined>;
   create(input: Omit<Product, "id" | "createdAt">): Promise<Product>;
   update(id: string, input: Partial<Product>): Promise<Product | undefined>;
   remove(id: string): Promise<void>;

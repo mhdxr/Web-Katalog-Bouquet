@@ -9,10 +9,10 @@ import { OrderButton } from "@/components/product/order-button";
 import { ProductGrid } from "@/components/product/product-grid";
 import { SectionHeading } from "@/components/common/section-heading";
 import {
-  getProductBySlug,
-  getRelatedProducts,
-  products,
-} from "@/data/products";
+  fetchAllProducts,
+  fetchProductBySlug,
+  fetchRelatedProducts,
+} from "@/lib/server/products";
 import { categoryMap } from "@/data/categories";
 import { formatCurrency } from "@/lib/utils";
 import { siteConfig } from "@/config/site";
@@ -21,12 +21,35 @@ interface PageProps {
   params: { slug: string };
 }
 
-export function generateStaticParams() {
-  return products.map((p) => ({ slug: p.slug }));
+/**
+ * ISR fallback: detail produk akan re-render setiap 60 detik. Tapi
+ * normalnya update admin sudah men-trigger `revalidateTag("products")`
+ * sehingga perubahan langsung terlihat tanpa menunggu interval ini.
+ */
+export const revalidate = 60;
+
+/**
+ * `dynamicParams = true` (default) memastikan slug yang BARU dibuat
+ * admin (belum ada di hasil `generateStaticParams` saat build) tetap
+ * bisa di-render on-demand dengan SSR + caching, lalu di-ISR seperti
+ * slug lain. Tanpa ini, slug baru akan 404 sampai redeploy.
+ */
+export const dynamicParams = true;
+
+/**
+ * Generate slug params di build time. Aman dipanggil walau Supabase
+ * belum tersedia — fallback ke seed lokal supaya `next build` tidak
+ * gagal pada environment yang belum di-set.
+ */
+export async function generateStaticParams() {
+  const all = await fetchAllProducts();
+  return all.map((p) => ({ slug: p.slug }));
 }
 
-export function generateMetadata({ params }: PageProps): Metadata {
-  const product = getProductBySlug(params.slug);
+export async function generateMetadata({
+  params,
+}: PageProps): Promise<Metadata> {
+  const product = await fetchProductBySlug(params.slug);
   if (!product) return { title: "Produk tidak ditemukan" };
   return {
     title: product.name,
@@ -39,15 +62,14 @@ export function generateMetadata({ params }: PageProps): Metadata {
   };
 }
 
-export default function ProductDetailPage({ params }: PageProps) {
-  const found = getProductBySlug(params.slug);
-  if (!found) {
+export default async function ProductDetailPage({ params }: PageProps) {
+  const product = await fetchProductBySlug(params.slug);
+  if (!product) {
     notFound();
   }
-  const product = found!;
 
   const cat = categoryMap[product.category];
-  const related = getRelatedProducts(product, 4);
+  const related = await fetchRelatedProducts(product, 4);
   const isAvailable =
     product.isAvailable && product.badge !== "sold-out";
 

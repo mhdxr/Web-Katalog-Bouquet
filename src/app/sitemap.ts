@@ -1,12 +1,26 @@
 import type { MetadataRoute } from "next";
-import { products } from "@/data/products";
+import { fetchAllProducts } from "@/lib/server/products";
 import { categories } from "@/data/categories";
 import { siteConfig } from "@/config/site";
 
 const siteUrl = siteConfig.url;
 
-export default function sitemap(): MetadataRoute.Sitemap {
+/**
+ * ISR: sitemap re-generate setiap 60 detik. `revalidateTag("products")`
+ * dari admin action juga otomatis meng-invalidate cache fetcher di
+ * dalamnya, jadi sitemap segera fresh setelah produk baru ditambahkan.
+ */
+export const revalidate = 60;
+
+/**
+ * Sitemap mengambil daftar produk dari Supabase (RLS akan memastikan
+ * hanya produk `is_available = true` yang muncul untuk anonim). Kalau
+ * env Supabase belum di-set, helper akan fallback ke seed lokal supaya
+ * `next build` tidak gagal.
+ */
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
+  const products = await fetchAllProducts();
 
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: `${siteUrl}/`, lastModified: now, priority: 1 },
@@ -16,7 +30,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   const productRoutes: MetadataRoute.Sitemap = products.map((p) => ({
     url: `${siteUrl}/produk/${p.slug}`,
-    lastModified: new Date(p.createdAt),
+    lastModified: p.createdAt ? new Date(p.createdAt) : now,
     priority: 0.7,
   }));
 

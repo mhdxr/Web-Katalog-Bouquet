@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { loginSchema, type LoginSchema } from "@/lib/validations";
-import { setAdminSession } from "@/lib/auth";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { siteConfig } from "@/config/site";
 
 export function LoginForm() {
@@ -28,20 +28,39 @@ export function LoginForm() {
   const onSubmit = async (data: LoginSchema) => {
     setError(null);
     try {
-      const res = await fetch("/api/admin/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      const json = await res.json();
-      if (!res.ok || !json.ok) {
-        setError(json.message || "Login gagal.");
+      const supabase = createSupabaseBrowserClient();
+      const { data: signInData, error: signInError } =
+        await supabase.auth.signInWithPassword({
+          email: data.email.trim(),
+          password: data.password,
+        });
+
+      if (signInError || !signInData.user) {
+        setError(signInError?.message ?? "Email atau password salah.");
         return;
       }
-      setAdminSession(json.email);
-      router.push("/admin/dashboard");
-    } catch {
-      setError("Terjadi kesalahan. Coba lagi.");
+
+      // Validasi tambahan: user harus terdaftar di tabel admin_users.
+      // Kalau bukan admin, langsung sign-out supaya cookie tidak nyangkut.
+      const { data: adminRow, error: adminError } = await supabase
+        .from("admin_users")
+        .select("user_id")
+        .eq("user_id", signInData.user.id)
+        .maybeSingle();
+
+      if (adminError || !adminRow) {
+        await supabase.auth.signOut();
+        setError(
+          "Akun ini belum terdaftar sebagai admin. Hubungi pemilik toko untuk akses.",
+        );
+        return;
+      }
+
+      router.replace("/admin/dashboard");
+      router.refresh();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Terjadi kesalahan.";
+      setError(msg);
     }
   };
 
@@ -68,6 +87,7 @@ export function LoginForm() {
           id="email"
           type="email"
           placeholder={siteConfig.adminEmailPlaceholder}
+          autoComplete="email"
           {...register("email")}
         />
         {errors.email && (
@@ -81,6 +101,7 @@ export function LoginForm() {
           id="password"
           type="password"
           placeholder="••••••••"
+          autoComplete="current-password"
           {...register("password")}
         />
         {errors.password && (
@@ -100,8 +121,8 @@ export function LoginForm() {
       </Button>
 
       <p className="text-center text-xs text-muted-foreground">
-        Kredensial diatur di file{" "}
-        <code className="rounded bg-secondary px-1.5 py-0.5">.env</code>.
+        Akun admin diatur lewat Supabase Auth + tabel{" "}
+        <code className="rounded bg-secondary px-1.5 py-0.5">admin_users</code>.
       </p>
     </form>
   );

@@ -62,9 +62,9 @@ export const siteConfig: SiteConfig = {
     process.env.NEXT_PUBLIC_WHATSAPP_NUMBER?.trim() || FALLBACK_WA_NUMBER,
   priceRange: "Rp200.000 - Rp2.000.000",
   currency: "IDR",
-  contactEmail: "hello@mushida.id",
-  instagramHandle: "mushida.id",
-  adminEmailPlaceholder: "admin@mushida.id",
+  contactEmail: "hello@mushida.me",
+  instagramHandle: "mushida.me",
+  adminEmailPlaceholder: "admin@mushida.me",
   keywords: [
     "bouquet bunga",
     "toko bunga online",

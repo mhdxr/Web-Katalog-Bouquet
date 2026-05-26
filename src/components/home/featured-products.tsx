@@ -3,10 +3,10 @@ import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProductGrid } from "@/components/product/product-grid";
 import { SectionHeading } from "@/components/common/section-heading";
-import { getFeaturedProducts } from "@/data/products";
+import { fetchFeaturedProducts } from "@/lib/server/products";
 
-export function FeaturedProducts() {
-  const products = getFeaturedProducts(4);
+export async function FeaturedProducts() {
+  const products = await fetchFeaturedProducts(4);
 
   return (
     <section className="container py-16 md:py-24">
