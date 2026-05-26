@@ -234,10 +234,11 @@ Server Components & sitemap memakai `src/lib/server/products.ts` yang berbasis *
 
 1. Buat project baru di [supabase.com](https://supabase.com).
 2. Buka **SQL Editor** lalu jalankan:
-   - `supabase/schema.sql` — bikin tabel `admin_users` + `products`, trigger `updated_at`, dan **semua RLS policy**.
+   - `supabase/schema.sql` — bikin tabel `admin_users` + `products`, trigger `updated_at`, **semua RLS policy** (database + storage).
    - `supabase/seed.sql` — masukkan 12 produk awal (idempoten, aman dijalankan ulang).
-3. Buat user admin pertama (lihat bagian [Production Admin Dashboard](#-production-admin-dashboard)).
-4. Salin URL + anon key ke `.env.local` / Vercel.
+3. Buat bucket Storage `product-images` (lihat [Setup Supabase Storage](#-setup-supabase-storage)).
+4. Buat user admin pertama (lihat bagian [Production Admin Dashboard](#-production-admin-dashboard)).
+5. Salin URL + anon key ke `.env.local` / Vercel.
 
 **RLS yang aktif di `products`:**
 
@@ -248,6 +249,78 @@ Server Components & sitemap memakai `src/lib/server/products.ts` yang berbasis *
 | `products_admin_insert/update/delete` | authenticated  | CRUD penuh, hanya jika `is_admin()` = true            |
 
 `is_admin()` adalah `SECURITY DEFINER` function yang mengecek keberadaan `auth.uid()` di tabel `admin_users`.
+
+---
+
+## 🖼️ Setup Supabase Storage
+
+Gambar produk di-upload langsung dari admin dashboard ke **Supabase Storage** (bucket `product-images`). Public read terbuka untuk semua orang; INSERT/UPDATE/DELETE dibatasi ke admin (cek `public.is_admin()`).
+
+### 1. Bikin bucket
+
+Supabase Dashboard → **Storage** → **New bucket**:
+
+| Field                     | Nilai                                                |
+| ------------------------- | ---------------------------------------------------- |
+| **Name**                  | `product-images`                                     |
+| **Public bucket**         | ✅ ON (supaya `getPublicUrl()` bisa diakses publik) |
+| **File size limit**       | `3 MB` (opsional — server juga memvalidasi)          |
+| **Allowed MIME types**    | `image/jpeg, image/png, image/webp` (opsional)       |
+
+> **Kenapa public bucket?** Halaman katalog publik perlu menampilkan gambar tanpa auth. RLS object-level di bawah yang mengunci tulisan ke admin saja, jadi public bucket tidak berarti siapa pun bisa upload.
+
+### 2. Apply policy storage
+
+Policy SQL sudah ada di `supabase/schema.sql` bagian `7. STORAGE`. Kalau kamu menjalankan ulang `schema.sql`, policy ikut ter-apply. Kalau hanya ingin policy storage saja, copy-paste blok di bawah ke **SQL Editor**:
+
+```sql
+-- Public read
+drop policy if exists "product_images_public_read" on storage.objects;
+create policy "product_images_public_read"
+on storage.objects for select
+to anon, authenticated
+using (bucket_id = 'product-images');
+
+-- Admin INSERT
+drop policy if exists "product_images_admin_insert" on storage.objects;
+create policy "product_images_admin_insert"
+on storage.objects for insert
+to authenticated
+with check (bucket_id = 'product-images' and public.is_admin());
+
+-- Admin UPDATE
+drop policy if exists "product_images_admin_update" on storage.objects;
+create policy "product_images_admin_update"
+on storage.objects for update
+to authenticated
+using (bucket_id = 'product-images' and public.is_admin())
+with check (bucket_id = 'product-images' and public.is_admin());
+
+-- Admin DELETE
+drop policy if exists "product_images_admin_delete" on storage.objects;
+create policy "product_images_admin_delete"
+on storage.objects for delete
+to authenticated
+using (bucket_id = 'product-images' and public.is_admin());
+```
+
+### 3. Whitelist hostname di Next.js
+
+Setelah bucket aktif, `next.config.mjs` otomatis menambahkan hostname Supabase Storage ke `images.remotePatterns` berdasarkan `NEXT_PUBLIC_SUPABASE_URL`. Pathname dibatasi ke `/storage/v1/object/public/product-images/**` — tidak ada wildcard global yang bisa menyalahgunakan optimizer Next/Image.
+
+Pastikan env `NEXT_PUBLIC_SUPABASE_URL` sudah di-set saat build, supaya pattern-nya ter-include.
+
+### 4. Aturan upload
+
+| Aturan                  | Nilai                                                                                          |
+| ----------------------- | ---------------------------------------------------------------------------------------------- |
+| Format file             | JPG, PNG, WEBP                                                                                 |
+| Ukuran maksimum         | **3 MB per file**                                                                              |
+| Object path             | `products/{timestamp}-{random}-{stem}.{ext}` (di-generate server, nama asli di-sanitasi)        |
+| Authorization upload    | Server Action `uploadProductImage` → `getAdminUser()` + RLS storage (`public.is_admin()`)       |
+| Service role key        | **TIDAK pernah dipakai** — server cuma anon key + cookie sesi admin                            |
+
+Server Action upload-nya ada di `src/app/admin/upload-actions.ts`. UI-nya di `src/components/admin/product-form.tsx`. Lihat bagian [Production Admin Dashboard](#-production-admin-dashboard) untuk alur kerjanya.
 
 ---
 
@@ -288,7 +361,7 @@ Validator: `isValidWhatsAppNumber(input)` cek format `^[1-9]\d{7,14}$` setelah `
 
 - **Auth & data sudah production**: dashboard `/admin/dashboard` pakai Supabase Auth + RLS. Tidak ada session di `localStorage`. Perubahan produk dari admin langsung tampil di `/katalog` dan `/produk/[slug]` (RSC + ISR).
 - **Service role key**: jangan pernah ditaruh di env `NEXT_PUBLIC_*`. Aplikasi ini cukup pakai anon/publishable key — semua otorisasi di-enforce oleh RLS.
-- **Image storage**: seed produk masih pakai Unsplash. Sebelum production yang serius, ganti `next.config.mjs` `images.remotePatterns` ke hostname storage final (Supabase Storage / Cloudinary / S3) lalu update URL gambar di tabel `products`.
+- **Image storage**: gambar produk yang baru di-upload dari admin disimpan di **Supabase Storage** bucket `product-images` (lihat [Setup Supabase Storage](#-setup-supabase-storage)). Hostname Supabase otomatis di-whitelist di `next.config.mjs` lewat `NEXT_PUBLIC_SUPABASE_URL`. Seed Unsplash di `src/data/products.ts` masih dipakai untuk demo lokal — boleh di-replace setelah semua produk pakai Storage.
 - **WhatsApp env wajib valid** di production — `getWhatsAppNumber()` akan throw `Error` saat build/runtime kalau env kosong / format salah.
 - **Backup**: aktifkan Point-in-Time Recovery di Supabase (paid plan) atau jadwalkan dump berkala via `pg_dump` jika datanya sudah krusial.
 

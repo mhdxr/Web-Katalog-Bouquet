@@ -161,7 +161,76 @@ to authenticated
 using (public.is_admin());
 
 -- =====================================================================
--- 7. CARA MENAMBAH ADMIN PERTAMA
+-- 7. STORAGE: bucket `product-images` + RLS policies
+-- =====================================================================
+-- Bucket fisik HARUS dibuat manual sekali saja di Supabase Dashboard:
+--
+--   Storage → "New bucket"
+--     - Name: product-images
+--     - Public bucket: ✅ ON      (supaya getPublicUrl() bisa di-akses tanpa auth)
+--     - File size limit: 3 MB    (opsional — kita juga validasi di server)
+--     - Allowed MIME types: image/jpeg, image/png, image/webp (opsional)
+--
+-- Setelah bucket dibuat, jalankan policy di bawah supaya:
+--   - Publik (anon) hanya boleh SELECT/READ object di bucket ini.
+--   - Admin (authenticated + terdaftar di admin_users) boleh
+--     INSERT/UPDATE/DELETE object di bucket ini.
+--
+-- Bucket lain di project ini TIDAK terpengaruh oleh policy di bawah —
+-- semua scope-nya `bucket_id = 'product-images'`.
+-- =====================================================================
+
+-- Catatan: tabel `storage.objects` punya RLS yang aktif by default di
+-- Supabase. Kita TIDAK perlu (dan tidak boleh) memanggil `alter table
+-- storage.objects enable row level security` ulang.
+
+-- 7.1 Public/anon: SELECT object di bucket product-images.
+drop policy if exists "product_images_public_read" on storage.objects;
+create policy "product_images_public_read"
+on storage.objects
+for select
+to anon, authenticated
+using (bucket_id = 'product-images');
+
+-- 7.2 Admin: INSERT object ke bucket product-images.
+drop policy if exists "product_images_admin_insert" on storage.objects;
+create policy "product_images_admin_insert"
+on storage.objects
+for insert
+to authenticated
+with check (
+  bucket_id = 'product-images'
+  and public.is_admin()
+);
+
+-- 7.3 Admin: UPDATE object di bucket product-images.
+drop policy if exists "product_images_admin_update" on storage.objects;
+create policy "product_images_admin_update"
+on storage.objects
+for update
+to authenticated
+using (
+  bucket_id = 'product-images'
+  and public.is_admin()
+)
+with check (
+  bucket_id = 'product-images'
+  and public.is_admin()
+);
+
+-- 7.4 Admin: DELETE object di bucket product-images.
+drop policy if exists "product_images_admin_delete" on storage.objects;
+create policy "product_images_admin_delete"
+on storage.objects
+for delete
+to authenticated
+using (
+  bucket_id = 'product-images'
+  and public.is_admin()
+);
+
+-- =====================================================================
+-- 8. CARA MENAMBAH ADMIN PERTAMA
 -- =====================================================================
 -- 1. Buat user baru di Supabase Dashboard → Authentication → Users →
 --    "Add user" → isi email + password. Catat user_id (UUID).

@@ -8,6 +8,8 @@ import { categoryMap } from "@/data/categories";
 import { formatCurrency, truncate } from "@/lib/utils";
 import type { Product } from "@/types";
 
+const PLACEHOLDER = "/images/placeholder-bouquet.svg";
+
 interface ProductTableProps {
   products: Product[];
   onEdit: (p: Product) => void;
@@ -49,15 +51,13 @@ export function ProductTable({
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-3">
                     <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-secondary">
-                      {p.images[0] && (
-                        <Image
-                          src={p.images[0]}
-                          alt={p.name}
-                          fill
-                          sizes="48px"
-                          className="object-cover"
-                        />
-                      )}
+                      <Image
+                        src={p.images[0]?.trim() || PLACEHOLDER}
+                        alt={p.name}
+                        fill
+                        sizes="48px"
+                        className="object-cover"
+                      />
                     </div>
                     <div>
                       <p className="font-medium">{p.name}</p>
