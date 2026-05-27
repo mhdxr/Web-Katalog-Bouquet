@@ -1,59 +1,36 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { toast as sonnerToast } from "sonner";
+
+/**
+ * Wrapper tipis di atas `sonner` agar call-site lama tetap kompatibel.
+ *
+ * API yang dijaga supaya tidak breaking change:
+ *   toast.success(message)
+ *   toast.error(message)
+ *   toast.info(message)
+ *   toast.push(message, variant?)
+ *
+ * Implementasi sebenarnya delegasi penuh ke sonner — animasi, stacking,
+ * dan auto-dismiss di-handle oleh komponen `<Toaster />` global di
+ * `src/app/layout.tsx`.
+ */
 
 export type ToastVariant = "success" | "error" | "info";
 
-export interface ToastItem {
-  id: number;
-  message: string;
-  variant: ToastVariant;
-}
-
-let listeners: ((items: ToastItem[]) => void)[] = [];
-let store: ToastItem[] = [];
-let counter = 0;
-
-function notify() {
-  for (const l of listeners) l(store);
-}
-
 export const toast = {
-  push(message: string, variant: ToastVariant = "info") {
-    const id = ++counter;
-    store = [...store, { id, message, variant }];
-    notify();
-    setTimeout(() => {
-      store = store.filter((t) => t.id !== id);
-      notify();
-    }, 3000);
-  },
   success(message: string) {
-    this.push(message, "success");
+    sonnerToast.success(message);
   },
   error(message: string) {
-    this.push(message, "error");
+    sonnerToast.error(message);
   },
   info(message: string) {
-    this.push(message, "info");
+    sonnerToast(message);
+  },
+  push(message: string, variant: ToastVariant = "info") {
+    if (variant === "success") sonnerToast.success(message);
+    else if (variant === "error") sonnerToast.error(message);
+    else sonnerToast(message);
   },
 };
-
-export function useToasts() {
-  const [items, setItems] = useState<ToastItem[]>(store);
-
-  useEffect(() => {
-    const listener = (next: ToastItem[]) => setItems(next);
-    listeners.push(listener);
-    return () => {
-      listeners = listeners.filter((l) => l !== listener);
-    };
-  }, []);
-
-  const dismiss = useCallback((id: number) => {
-    store = store.filter((t) => t.id !== id);
-    notify();
-  }, []);
-
-  return { items, dismiss };
-}

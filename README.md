@@ -12,7 +12,7 @@ Aplikasi web katalog profesional untuk toko bouquet/bucket bunga dengan fitur or
 ## ✨ Fitur Utama
 
 - **Landing page elegan** — hero, produk unggulan, kategori, testimoni, cara order, footer.
-- **Katalog responsif** — grid produk, search, filter kategori & rentang harga, badge (Best Seller / New / Sold Out), empty state.
+- **Katalog responsif** — grid produk, search, filter kategori, rentang harga, status (Best Seller / New / Sold Out), sort (terbaru, harga, A–Z). Semua state tersimpan di URL (via [nuqs](https://nuqs.dev)) jadi filter bisa di-share / bookmark — tanpa merusak ISR karena update query bersifat shallow.
 - **Detail produk** — gallery gambar (dengan fallback placeholder), deskripsi, status ketersediaan, tombol order WhatsApp, produk terkait.
 - **Custom order page** — form Zod-validated, submit langsung mengarah ke WhatsApp dengan pesan otomatis.
 - **Production admin dashboard** — Supabase Auth (`signInWithPassword`) + whitelist `admin_users`. CRUD produk langsung tersimpan ke Supabase, dan setiap perubahan men-trigger `revalidateTag("products")` + revalidasi path slug terkait sehingga `/katalog` & `/produk/[slug]` langsung fresh tanpa redeploy.
@@ -29,6 +29,8 @@ Aplikasi web katalog profesional untuk toko bouquet/bucket bunga dengan fitur or
 | Animation    | Framer Motion                                 |
 | Form         | React Hook Form + Zod                         |
 | Icons        | Lucide React                                  |
+| Toast        | Sonner                                        |
+| URL state    | nuqs (search/filter/sort katalog)             |
 | Fonts        | Inter + Playfair Display (next/font)          |
 
 ---

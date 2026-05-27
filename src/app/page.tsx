@@ -3,6 +3,8 @@ import { CategorySection } from "@/components/home/category-section";
 import { FeaturedProducts } from "@/components/home/featured-products";
 import { TestimonialsSection } from "@/components/home/testimonials-section";
 import { HowToOrder } from "@/components/home/how-to-order";
+import { PromoBanner } from "@/components/home/promo-banner";
+import { CustomCtaSection } from "@/components/home/custom-cta-section";
 
 /**
  * ISR safety net: jika tag cache tidak ter-revalidate karena suatu hal
@@ -16,9 +18,11 @@ export default function HomePage() {
   return (
     <>
       <Hero />
+      <PromoBanner />
       <FeaturedProducts />
       <CategorySection />
       <TestimonialsSection />
+      <CustomCtaSection />
       <HowToOrder />
     </>
   );

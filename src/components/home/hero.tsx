@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { siteConfig } from "@/config/site";
+import { heroTrustSignals } from "@/config/promo";
 
 export function Hero() {
   return (
@@ -22,15 +23,26 @@ export function Hero() {
             Hand-tied bouquet artisan
           </div>
           <h1 className="font-serif text-4xl font-semibold leading-[1.1] tracking-tight md:text-5xl lg:text-6xl">
-            Setiap rangkaian{" "}
-            <span className="italic text-primary">bercerita</span>, untuk
-            momen tak terlupakan.
+            Bouquet premium untuk{" "}
+            <span className="italic text-primary">momen berharga</span>{" "}
+            kamu.
           </h1>
           <p className="max-w-lg text-base text-muted-foreground md:text-lg">
-            Dari hand-bouquet klasik hingga rangkaian wedding mewah —{" "}
-            {siteConfig.displayName} menghadirkan bunga premium dengan
-            sentuhan personal untuk setiap kisah Anda.
+            {siteConfig.displayName} merangkai bunga segar tangan demi
+            tangan — wedding, wisuda, anniversary, atau hadiah personal.
+            Order praktis langsung via WhatsApp.
           </p>
+          <ul className="flex flex-wrap gap-2 pt-1">
+            {heroTrustSignals.map((t) => (
+              <li
+                key={t.label}
+                className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-white/80 px-3 py-1 text-xs font-medium text-foreground/80 shadow-sm backdrop-blur-sm"
+              >
+                <span aria-hidden>{t.emoji}</span>
+                {t.label}
+              </li>
+            ))}
+          </ul>
           <div className="flex flex-wrap items-center gap-3 pt-2">
             <Button asChild size="lg">
               <Link href="/katalog">
